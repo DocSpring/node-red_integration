@@ -1,0 +1,46 @@
+{
+  "name": "@docspring/node-red-docspring",
+  "version": "0.1.0",
+  "description": "Node-RED nodes for DocSpring — generate, combine, and sign PDFs from your templates.",
+  "keywords": [
+    "node-red",
+    "docspring",
+    "pdf",
+    "documents",
+    "esignature"
+  ],
+  "license": "MIT",
+  "homepage": "https://docspring.com",
+  "author": {
+    "name": "DocSpring",
+    "email": "support@docspring.com"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/DocSpring/node-red_integration.git"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "node-red": {
+    "version": ">=3.0.0",
+    "nodes": {
+      "docspring-config": "nodes/docspring-config.js",
+      "docspring": "nodes/docspring.js"
+    }
+  },
+  "scripts": {
+    "test": "mocha \"test/**/*_spec.js\""
+  },
+  "files": [
+    "nodes",
+    "lib",
+    "icons"
+  ],
+  "devDependencies": {
+    "mocha": "^10.7.3",
+    "node-red": "^4.0.9",
+    "node-red-node-test-helper": "^0.3.4",
+    "should": "^13.2.3"
+  }
+}

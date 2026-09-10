@@ -1,0 +1,77 @@
+<script type="text/javascript">
+	RED.nodes.registerType('docspring', {
+		category: 'DocSpring',
+		color: '#87b7e8',
+		defaults: {
+			name: { value: '' },
+			operation: { value: 'generatePdf', required: true },
+			server: { value: '', type: 'docspring-config', required: true },
+		},
+		inputs: 1,
+		outputs: 1,
+		icon: 'docspring.svg',
+		paletteLabel: 'DocSpring',
+		label: function () {
+			var labels = {
+				generatePdf: 'Generate PDF',
+				combinePdfs: 'Combine PDFs',
+				createDataRequest: 'Create Data Request',
+				createSigningLink: 'Create Signing Link',
+				findTemplate: 'Find Template',
+				findSubmission: 'Find Submission',
+			};
+			return this.name || 'DocSpring: ' + (labels[this.operation] || this.operation);
+		},
+	});
+</script>
+
+<script type="text/html" data-template-name="docspring">
+	<div class="form-row">
+		<label for="node-input-name"><i class="fa fa-tag"></i> Name</label>
+		<input type="text" id="node-input-name" placeholder="Name" />
+	</div>
+	<div class="form-row">
+		<label for="node-input-server"><i class="fa fa-cloud"></i> Connection</label>
+		<input type="text" id="node-input-server" />
+	</div>
+	<div class="form-row">
+		<label for="node-input-operation"><i class="fa fa-cogs"></i> Operation</label>
+		<select id="node-input-operation" style="width:70%">
+			<option value="generatePdf">Generate PDF</option>
+			<option value="combinePdfs">Combine PDFs</option>
+			<option value="createDataRequest">Create Data Request</option>
+			<option value="createSigningLink">Create Signing Link</option>
+			<option value="findTemplate">Find Template</option>
+			<option value="findSubmission">Find Submission</option>
+		</select>
+	</div>
+</script>
+
+<script type="text/html" data-help-name="docspring">
+	<p>
+		Calls the <a href="https://docspring.com/docs" target="_blank">DocSpring API</a>. Choose an
+		<b>Operation</b>; pass its parameters in <code>msg.payload</code>. The API response is written
+		back to <code>msg.payload</code>. Errors are sent to a <b>Catch</b> node.
+	</p>
+	<p>You can override the configured operation per message with <code>msg.operation</code>.</p>
+
+	<h3>Generate PDF</h3>
+	<p><code>msg.payload = { template_id, data: { field: value, ... }, test?, metadata?, password?, editable?, expires_in?, version? }</code></p>
+	<p>Returns the processed submission (with <code>download_url</code>).</p>
+
+	<h3>Combine PDFs</h3>
+	<p><code>msg.payload = { source_pdfs: [ { type: "submission"|"template"|"combined_submission"|"custom_file"|"url", id?, url?, template_version? } ], password?, expires_in?, metadata? }</code></p>
+
+	<h3>Create Data Request</h3>
+	<p><code>msg.payload = { template_id, data?, data_requests: [ { email, name?, fields?, auth_type? } ], test?, expires_in?, version? }</code></p>
+	<p>Returns a submission awaiting data requests, plus a 30-day <code>signing_url</code> per recipient.</p>
+
+	<h3>Create Signing Link</h3>
+	<p><code>msg.payload = { data_request_id, token_type?: "email"|"api" }</code> → returns the <code>signing_url</code>.</p>
+
+	<h3>Find Template</h3>
+	<p><code>msg.payload = { query?, limit? }</code> → an array of templates.</p>
+
+	<h3>Find Submission</h3>
+	<p><code>msg.payload = { submission_id }</code> (single) or <code>{ type?, created_after?, created_before?, limit? }</code> (list).</p>
+</script>

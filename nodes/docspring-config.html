@@ -1,0 +1,96 @@
+<script type="text/javascript">
+	RED.nodes.registerType('docspring-config', {
+		category: 'config',
+		defaults: {
+			name: { value: '' },
+			region: { value: 'us', required: true },
+			customHost: { value: '' },
+		},
+		credentials: {
+			tokenId: { type: 'text' },
+			tokenSecret: { type: 'password' },
+		},
+		label: function () {
+			return this.name || 'DocSpring';
+		},
+		oneditprepare: function () {
+			var node = this;
+
+			var toggleHost = function () {
+				if ($('#node-config-input-region').val() === 'self_hosted') {
+					$('#docspring-host-row').show();
+				} else {
+					$('#docspring-host-row').hide();
+				}
+			};
+			$('#node-config-input-region').on('change', toggleHost);
+			toggleHost();
+
+			$('#docspring-test-btn').on('click', function () {
+				var payload = {
+					region: $('#node-config-input-region').val(),
+					customHost: $('#node-config-input-customHost').val(),
+					tokenId: $('#node-config-input-tokenId').val(),
+					tokenSecret: $('#node-config-input-tokenSecret').val(),
+				};
+				$('#docspring-test-result').text('Testing…').css('color', '#888');
+				$.ajax({
+					url: 'docspring-config/' + (node.id || '_new') + '/test',
+					type: 'POST',
+					contentType: 'application/json',
+					data: JSON.stringify(payload),
+					success: function (res) {
+						$('#docspring-test-result')
+							.text(res.message)
+							.css('color', res.ok ? '#2ea44f' : '#d1242f');
+					},
+					error: function (jqXHR) {
+						$('#docspring-test-result')
+							.text('Test failed: ' + (jqXHR.responseText || jqXHR.statusText))
+							.css('color', '#d1242f');
+					},
+				});
+			});
+		},
+	});
+</script>
+
+<script type="text/html" data-template-name="docspring-config">
+	<div class="form-row">
+		<label for="node-config-input-name"><i class="fa fa-tag"></i> Name</label>
+		<input type="text" id="node-config-input-name" placeholder="My DocSpring account" />
+	</div>
+	<div class="form-row">
+		<label for="node-config-input-region"><i class="fa fa-globe"></i> Region</label>
+		<select id="node-config-input-region" style="width:70%">
+			<option value="us">United States</option>
+			<option value="eu">Europe</option>
+			<option value="self_hosted">Self-hosted / Enterprise</option>
+		</select>
+	</div>
+	<div class="form-row" id="docspring-host-row">
+		<label for="node-config-input-customHost"><i class="fa fa-server"></i> Host</label>
+		<input type="text" id="node-config-input-customHost" placeholder="https://docspring.example.com" />
+	</div>
+	<div class="form-row">
+		<label for="node-config-input-tokenId"><i class="fa fa-user"></i> Token ID</label>
+		<input type="text" id="node-config-input-tokenId" placeholder="api_..." />
+	</div>
+	<div class="form-row">
+		<label for="node-config-input-tokenSecret"><i class="fa fa-lock"></i> Token Secret</label>
+		<input type="password" id="node-config-input-tokenSecret" />
+	</div>
+	<div class="form-row">
+		<button type="button" class="red-ui-button" id="docspring-test-btn">Test connection</button>
+		<span id="docspring-test-result" style="margin-left:10px;"></span>
+	</div>
+</script>
+
+<script type="text/html" data-help-name="docspring-config">
+	<p>Holds your DocSpring API connection, shared by the DocSpring action nodes.</p>
+	<p>
+		Create a token in the DocSpring web app under <b>Settings → API Tokens</b>, then enter the
+		<b>Token ID</b> and <b>Token Secret</b> here and pick your <b>Region</b>. Use
+		<b>Test connection</b> to confirm the credentials work.
+	</p>
+</script>
