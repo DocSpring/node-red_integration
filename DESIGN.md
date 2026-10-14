@@ -15,7 +15,6 @@ each node's `.js` (runtime) and `.html` (palette entry + edit dialog + help).
 ```
 docspring-config.js / .html    # config node: connection (region + token id/secret)
 docspring.js        / .html    # action node: operation selector, msg-driven
-docspring-event.js  / .html    # trigger node: DocSpring webhook → flow (optional v1)
 lib/regions.js                 # region → host + sync host
 lib/docspring.js               # shared HTTP request helper (Basic auth)
 icons/docspring.svg
@@ -63,13 +62,13 @@ Operations (payload in → payload out):
 errors go to `done(err)` so Catch nodes can handle them, with DocSpring's
 `{status:error, errors:[…]}` surfaced as the message.
 
-## Trigger node — `docspring-event` (v1 stretch)
+## No trigger node (not planned)
 
-Registers a DocSpring REST-hook webhook (version 3) pointing at a Node-RED HTTP-In
-endpoint, emits each delivery flattened (top-level `id` = event uuid, `resource_id`,
-`resource_type`, `data`). Events: the 13 DocSpring event types + a mode filter.
-(If the HTTP-endpoint registration proves fiddly for v1, document using a core
-HTTP-In node + the DocSpring dashboard webhook instead.)
+The other integrations have a trigger that registers a DocSpring webhook through the
+webhooks API. Node-RED doesn't: it usually runs on an internal network, so DocSpring
+can't reach it to deliver webhooks. To act on DocSpring events, poll with an Inject node
+and **Find Submission** (`created_after`). A Node-RED instance with a public URL can use
+a core HTTP-In node and a webhook added in the DocSpring dashboard.
 
 ## Gotchas carried over
 
@@ -77,7 +76,6 @@ HTTP-In node + the DocSpring dashboard webhook instead.)
   wait** for Create Data Request.
 - Signing-link `type` in the **query string** (works from body too, but qs is canonical).
 - Self-hosted `customHost` needs an `https://` scheme prepended if omitted.
-- v3 webhook delivery: top-level `id` is the event uuid; resource uid at `data.id`.
 - DocSpring errors: `{status:error, errors:[…]}` — surface `errors.join(', ')`.
 
 ## Testing & publishing
