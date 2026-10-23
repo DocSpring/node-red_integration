@@ -33,7 +33,7 @@ to a **Catch** node. You can override the operation per message with `msg.operat
 |---|---|---|
 | **Generate PDF** | `{ template_id, data: {…}, test?, password?, expires_in?, … }` | the processed submission (+ `download_url`) |
 | **Combine PDFs** | `{ source_pdfs: [{ type, id\|url, template_version? }], … }` | the combined submission |
-| **Create Data Request** | `{ template_id, data_requests: [{ email, name?, fields?, auth_type? }], … }` | submission + a `signing_url` per recipient |
+| **Create Signature Request** | `{ template_id, data_requests: [{ email, name?, fields?, auth_type? }], … }` | submission + a `signing_url` per recipient |
 | **Create Signing Link** | `{ data_request_id, token_type?: "email"\|"api" }` | the `signing_url` |
 | **Find Template** | `{ query?, limit? }` | array of templates |
 | **Find Submission** | `{ submission_id }` or `{ type?, created_after?, created_before?, limit? }` | submission(s) |

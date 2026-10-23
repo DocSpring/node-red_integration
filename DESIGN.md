@@ -45,7 +45,7 @@ Operations (payload in → payload out):
 - **Combine PDFs** — `POST {sync}/api/v1/combined_submissions?wait=true`.
   `{ source_pdfs:[{type,id|url,template_version?}], password?, expires_in?, metadata? }`
   → `body.combined_submission`.
-- **Create Data Request** — `POST /api/v1/templates/{template_id}/submissions`
+- **Create Signature Request** — `POST /api/v1/templates/{template_id}/submissions`
   (standard host, no wait). `{ template_id, data?, data_requests:[{email,name?,fields?,
   auth_type?}], test?, ... }` → submission (`waiting_for_data_requests`) + a minted
   30-day `email` signing link per recipient (`signing_url`, `first_signing_url`).
@@ -73,9 +73,14 @@ a core HTTP-In node and a webhook added in the DocSpring dashboard.
 ## Gotchas carried over
 
 - **Sync host + `?wait=true`** for Generate PDF / Combine PDFs; **standard host, no
-  wait** for Create Data Request.
+  wait** for Create Signature Request.
 - Signing-link `type` in the **query string** (works from body too, but qs is canonical).
 - Self-hosted `customHost` needs an `https://` scheme prepended if omitted.
+- Naming: DocSpring calls data requests **signature requests**, so labels and help
+  say "Create Signature Request". The stored operation value stays
+  `createDataRequest` (saved flows hold it); `msg.operation` also takes
+  `createSignatureRequest`. Payload keys (`data_requests`, `data_request_id`) are
+  API v1's names and change with the API v2 port.
 - DocSpring errors: `{status:error, errors:[…]}` — surface `errors.join(', ')`.
 
 ## Testing & publishing

@@ -15,7 +15,7 @@
 			var labels = {
 				generatePdf: 'Generate PDF',
 				combinePdfs: 'Combine PDFs',
-				createDataRequest: 'Create Data Request',
+				createDataRequest: 'Create Signature Request',
 				createSigningLink: 'Create Signing Link',
 				findTemplate: 'Find Template',
 				findSubmission: 'Find Submission',
@@ -39,7 +39,7 @@
 		<select id="node-input-operation" style="width:70%">
 			<option value="generatePdf">Generate PDF</option>
 			<option value="combinePdfs">Combine PDFs</option>
-			<option value="createDataRequest">Create Data Request</option>
+			<option value="createDataRequest">Create Signature Request</option>
 			<option value="createSigningLink">Create Signing Link</option>
 			<option value="findTemplate">Find Template</option>
 			<option value="findSubmission">Find Submission</option>
@@ -62,9 +62,10 @@
 	<h3>Combine PDFs</h3>
 	<p><code>msg.payload = { source_pdfs: [ { type: "submission"|"template"|"combined_submission"|"custom_file"|"url", id?, url?, template_version? } ], password?, expires_in?, metadata? }</code></p>
 
-	<h3>Create Data Request</h3>
+	<h3>Create Signature Request</h3>
 	<p><code>msg.payload = { template_id, data?, data_requests: [ { email, name?, fields?, auth_type? } ], test?, expires_in?, version? }</code></p>
-	<p>Returns a submission awaiting data requests, plus a 30-day <code>signing_url</code> per recipient.</p>
+	<p>Returns a submission awaiting signature requests, plus a 30-day <code>signing_url</code> per recipient.</p>
+	<p>In <code>msg.operation</code>, use <code>createSignatureRequest</code> (<code>createDataRequest</code> also works).</p>
 
 	<h3>Create Signing Link</h3>
 	<p><code>msg.payload = { data_request_id, token_type?: "email"|"api" }</code> → returns the <code>signing_url</code>.</p>

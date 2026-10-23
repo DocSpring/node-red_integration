@@ -56,6 +56,23 @@ describe('DocSpring nodes', function () {
 		});
 	});
 
+	it('accepts createSignatureRequest in msg.operation, as createDataRequest', function (done) {
+		const flow = [
+			{ id: 'c1', type: 'docspring-config', name: 'test', region: 'us' },
+			{ id: 'n1', type: 'docspring', name: 't', operation: 'findTemplate', server: 'c1' },
+		];
+		const testCreds = { c1: { tokenId: 'api_test_id', tokenSecret: 'secret' } };
+		helper.load([configNode, docspringNode], flow, testCreds, function () {
+			const n1 = helper.getNode('n1');
+			n1.on('call:error', function (call) {
+				// The create handler ran: it rejects a payload without a template before any request.
+				String(call.firstArg.message || call.firstArg).should.equal('template_id is required');
+				done();
+			});
+			n1.receive({ operation: 'createSignatureRequest', payload: {} });
+		});
+	});
+
 	(HAS_CREDS ? it : it.skip)('runs Find Template against the live API', function (done) {
 		const flow = [
 			{ id: 'c1', type: 'docspring-config', name: 'test', region: 'us' },
