@@ -174,9 +174,9 @@
 	<p>(<code>checkData</code>)</p>
 	<p><code>msg.payload = { template_id, data, version?, test?, signature_requests? }</code></p>
 	<p>
-		Checks the data against the template without creating anything. Returns <code>{ valid, template_id,
-		template_version, error? }</code>: when <code>valid</code> is false, <code>error</code> is what Generate PDF
-		would return.
+		Checks the data against the template without creating anything. <code>signature_requests</code> are the
+		signers, as in Create Signature Request. Returns <code>{ valid, template_id, template_version, error?
+		}</code>: when <code>valid</code> is false, <code>error</code> is what Generate PDF would return.
 	</p>
 
 	<h3>Get Submission</h3>
@@ -187,8 +187,9 @@
 	<p>(<code>findSubmissions</code>)</p>
 	<p><code>msg.payload = { template_id?, test?, created_after?, created_before?, include_data?, limit?, cursor? }</code></p>
 	<p>
-		Returns a page: <code>{ data: [ … ], next_cursor }</code>. Send <code>next_cursor</code> back as
-		<code>cursor</code> for the next page (it's null on the last one). <code>limit</code> is 1 to 100 (default 50).
+		Returns <code>{ data: [ … ], next_cursor }</code>, newest first. <code>limit</code> is how many to return
+		(default 50): above 100, the node gets several pages for you. Send <code>next_cursor</code> back as
+		<code>cursor</code> for the ones after those (it's null when there are no more).
 		<code>test</code>: true for test submissions, false for live ones, left out for both. Times are RFC 3339,
 		such as <code>2026-01-31T09:00:00Z</code>.
 	</p>
@@ -219,13 +220,14 @@
 
 	<h3>Create Signature Request</h3>
 	<p>(<code>createSignatureRequest</code>)</p>
-	<p><code>msg.payload = { template_id, data?, version?, test?, metadata?, expires_in?, signature_requests: [ { name?, email?, role?, fields: ["field", …], auth_type?, auth_provider?, prefilled_values_editable?, ignore_unknown_fields? } ], signing_link_type? }</code></p>
+	<p><code>msg.payload = { template_id, data?, version?, test?, metadata?, expires_in?, signature_requests: [ { email, fields: ["field", …], name?, role?, auth_type?, auth_provider?, prefilled_values_editable?, ignore_unknown_fields? } ], signing_link_type? }</code></p>
 	<p>
-		Each signer needs <code>fields</code>: the names of the fields they fill in (a list, or text separated by
-		commas). A field can only be in one signature request. <code>auth_type</code> is <code>email_link</code>
-		(the default), <code>password</code>, <code>oauth</code> (with <code>auth_provider</code>),
-		<code>phone_number</code>, <code>ldap</code> or <code>saml</code>. A field that <code>data</code> fills in
-		needs <code>prefilled_values_editable</code>.
+		Each signer needs an <code>email</code> and <code>fields</code>: the names of the fields they fill in (a
+		list, or text separated by commas). A signer without an email is left out, as in version 0.1, so an empty
+		row for an optional signer creates nothing. A field can only be in one signature request.
+		<code>auth_type</code> is <code>email_link</code> (the default), <code>password</code>, <code>oauth</code>
+		(with <code>auth_provider</code>), <code>phone_number</code>, <code>ldap</code> or <code>saml</code>. A field
+		that <code>data</code> fills in needs <code>prefilled_values_editable</code>.
 	</p>
 	<p>
 		Returns the submission, waiting for its signature requests. Each signature request gets a
@@ -250,8 +252,8 @@
 	<p>(<code>findTemplates</code>)</p>
 	<p><code>msg.payload = { query?, parent_folder_id?, limit?, cursor? }</code></p>
 	<p>
-		<code>query</code> matches template names. Returns a page, <code>{ data: [ … ], next_cursor }</code>, as
-		Find Submissions does.
+		<code>query</code> matches template names. Returns <code>{ data: [ … ], next_cursor }</code>, and takes
+		<code>limit</code> and <code>cursor</code>, as Find Submissions does.
 	</p>
 
 	<h3>Get Template</h3>
@@ -318,7 +320,11 @@
 	<h3>List Folders</h3>
 	<p>(<code>listFolders</code>)</p>
 	<p><code>msg.payload = { parent_folder_id?, limit?, cursor? }</code></p>
-	<p>Without <code>parent_folder_id</code>, it lists every folder. Returns a page, as Find Submissions does.</p>
+	<p>
+		Without <code>parent_folder_id</code>, it lists every folder. Returns a page, <code>{ data: [ … ],
+		next_cursor }</code>: <code>limit</code> is 1 to 100 (default 50), and <code>next_cursor</code> goes back as
+		<code>cursor</code> for the next page.
+	</p>
 
 	<h3>Create Folder</h3>
 	<p>(<code>createFolder</code>)</p>
@@ -337,8 +343,9 @@
 		The operation values <code>createDataRequest</code>, <code>findTemplate</code> and
 		<code>findSubmission</code> still work, and so do the payload keys <code>data_requests</code>,
 		<code>data_request_id</code>, <code>token_type</code>, <code>type</code> (<code>live</code> or
-		<code>test</code>) and the <code>combined_submission</code> source type. The output is API v2's: for
-		example, the PDF link is <code>files.pdf.download_url</code>, and Find Templates and Find Submissions
-		return a page.
+		<code>test</code>) and the <code>combined_submission</code> source type. <code>limit</code> is still how
+		many templates or submissions to return, and signers without an email are still left out. The output is API
+		v2's: for example, the PDF link is <code>files.pdf.download_url</code>, and Find Templates and Find
+		Submissions return <code>{ data, next_cursor }</code> instead of a list.
 	</p>
 </script>

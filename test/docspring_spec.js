@@ -153,7 +153,9 @@ describe('DocSpring nodes', function () {
 				n1.on('call:warn', (call) => warnings.push(call.firstArg));
 				n1.on('call:error', (call) => reject(call.firstArg));
 				helper.getNode('n2').on('input', resolve);
-				n1.receive({ payload: { template_id: 'tpl_1', signature_requests: [{ fields: ['signature'] }] } });
+				n1.receive({
+					payload: { template_id: 'tpl_1', signature_requests: [{ email: 'jane@example.com', fields: ['signature'] }] },
+				});
 			});
 		});
 		(msg.payload.first_signing_url === null).should.be.true();

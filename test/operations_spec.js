@@ -336,7 +336,7 @@ describe('DocSpring operations', function () {
 				created_after: new Date('2026-01-31T09:00:00Z'),
 				created_before: '2026-02-01T00:00:00Z',
 				include_data: true,
-				limit: '10',
+				limit: '1',
 				cursor: 'sub_0',
 			});
 			result.should.eql(page);
@@ -346,7 +346,7 @@ describe('DocSpring operations', function () {
 				created_after: '2026-01-31T09:00:00.000Z',
 				created_before: '2026-02-01T00:00:00Z',
 				include_data: 'true',
-				limit: '10',
+				limit: '1',
 				cursor: 'sub_0',
 			});
 		});
@@ -363,6 +363,23 @@ describe('DocSpring operations', function () {
 			await run('findSubmissions', { test: 'live' });
 			mock.last.query.should.eql({ test: 'false' });
 			await run('findSubmissions', { type: 'all' }).should.be.rejectedWith('type must be test or live');
+		});
+
+		it("gets pages of up to 100 until it has limit submissions or there are no more, as 0.1.x's limit did", async function () {
+			const subs = (from, count) => Array.from({ length: count }, (_, i) => submission({ id: 'sub_' + (from + i) }));
+			mock.respond(200, { data: subs(1, 100), next_cursor: 'sub_100' });
+			mock.respond(200, { data: subs(101, 30), next_cursor: null });
+			const result = await run('findSubmissions', { type: 'test', limit: 500, cursor: 'sub_0' });
+			result.data.length.should.equal(130);
+			result.data[129].id.should.equal('sub_130');
+			(result.next_cursor === null).should.be.true();
+			mock.calls.map((c) => c.query).should.eql([
+				{ test: 'true', limit: '100', cursor: 'sub_0' },
+				{ test: 'true', limit: '100', cursor: 'sub_100' },
+			]);
+
+			await run('findSubmissions', { limit: 0 }).should.be.rejectedWith('limit must be 1 or more');
+			mock.calls.length.should.equal(2);
 		});
 	});
 
@@ -533,6 +550,42 @@ describe('DocSpring operations', function () {
 			result.first_signature_request_id.should.equal('srq_1');
 		});
 
+		it('leaves out signers without an email, as 0.1.x did, under both keys', async function () {
+			const created = submission({ signature_requests: [signatureRequest('srq_1')] });
+			const rows = [
+				{ name: 'Jane', email: 'jane@example.com', fields: 'signature' },
+				{ name: '', email: '', fields: 'signature_2' },
+				{ name: 'No email', fields: 'signature_3' },
+				{ email: '  ', fields: 'signature_4' },
+				null,
+			];
+			const expected = [{ name: 'Jane', email: 'jane@example.com', fields: ['signature'], auth_type: 'email_link' }];
+			for (const key of ['signature_requests', 'data_requests']) {
+				mock.respond(201, created).respond(201, token('srq_1', 'email'));
+				await run('createSignatureRequest', { template_id: 'tpl_1', [key]: rows });
+				mock.calls[mock.calls.length - 2].body.signature_requests.should.eql(expected);
+			}
+
+			mock.respond(200, { valid: true });
+			await run('checkData', { template_id: 'tpl_1', data: {}, data_requests: rows });
+			mock.last.body.signature_requests.should.eql(expected);
+			mock.respond(200, { valid: true });
+			await run('checkData', { template_id: 'tpl_1', data: {}, signature_requests: [{ fields: 'a' }] });
+			mock.last.body.should.eql({ data: {} });
+		});
+
+		it('needs at least one signer with an email, and names rows by their place in the list', async function () {
+			await run('createSignatureRequest', {
+				template_id: 'tpl_1',
+				signature_requests: [{ name: 'Jane', fields: 'signature' }],
+			}).should.be.rejectedWith('signature_requests needs at least one signer with an email: rows without one are left out');
+			await run('createSignatureRequest', {
+				template_id: 'tpl_1',
+				data_requests: [{ fields: 'a' }, { email: 'a@example.com' }],
+			}).should.be.rejectedWith(/^signature_requests\[1\]\.fields is required/);
+			mock.calls.length.should.equal(0);
+		});
+
 		it("warns, and carries on, when a signing link can't be created", async function () {
 			mock.respond(201, submission({ signature_requests: [signatureRequest('srq_1')] }));
 			mock.respond(403, { error: { code: 'forbidden', message: 'A test API token', details: [], request_id: 'req_2' } });
@@ -595,6 +648,21 @@ describe('DocSpring operations', function () {
 		mock.respond(200, page);
 		(await run('findTemplates', { query: 'Demo', parent_folder_id: 'fld_1', limit: 5, cursor: 'tpl_0' })).should.eql(page);
 		mock.last.url.toString().should.equal(API + '/templates?query=Demo&parent_folder_id=fld_1&limit=5&cursor=tpl_0');
+	});
+
+	it("Find Templates gets pages until it has limit templates, as 0.1.x's limit did", async function () {
+		const templates = (from, count) => Array.from({ length: count }, (_, i) => ({ id: 'tpl_' + (from + i) }));
+		mock.respond(200, { data: templates(1, 100), next_cursor: 'tpl_100' });
+		mock.respond(200, { data: templates(101, 100), next_cursor: 'tpl_200' });
+		mock.respond(200, { data: templates(201, 50), next_cursor: 'tpl_250' });
+		const result = await run('findTemplates', { query: 'x', limit: 250 });
+		result.data.map((t) => t.id).should.eql(templates(1, 250).map((t) => t.id));
+		result.next_cursor.should.equal('tpl_250');
+		mock.calls.map((c) => c.query).should.eql([
+			{ query: 'x', limit: '100' },
+			{ query: 'x', limit: '100', cursor: 'tpl_100' },
+			{ query: 'x', limit: '50', cursor: 'tpl_200' },
+		]);
 	});
 
 	it('Get Template gets the template', async function () {

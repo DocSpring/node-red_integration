@@ -48,7 +48,7 @@ response is written back to `msg.payload`. Errors go to a **Catch** node, with D
 | **Expire Submission** (`expireSubmission`) | `{ submission_id }` | the expired submission |
 | **Combine PDFs** (`combinePdfs`) | `{ source_pdfs: [{ type, id \| url, template_version?, processed? }], metadata?, password?, expires_in?, wait? }` | the combined PDF |
 | **Get Combined PDF** (`getCombinedPdf`) | `{ combined_pdf_id }` | the combined PDF |
-| **Create Signature Request** (`createSignatureRequest`) | `{ template_id, data?, version?, test?, metadata?, signature_requests: [{ name?, email?, role?, fields, auth_type?, auth_provider?, prefilled_values_editable?, ignore_unknown_fields? }], signing_link_type? }` | the submission, with a `signing_url` per signature request |
+| **Create Signature Request** (`createSignatureRequest`) | `{ template_id, data?, version?, test?, metadata?, signature_requests: [{ email, fields, name?, role?, auth_type?, auth_provider?, prefilled_values_editable?, ignore_unknown_fields? }], signing_link_type? }` | the submission, with a `signing_url` per signature request |
 | **Create Signing Link** (`createSigningLink`) | `{ signature_request_id, type?: "email" \| "api" }` | the token; `signature_request_url` is the link |
 | **Get Signature Request** (`getSignatureRequest`) | `{ signature_request_id }` | the signature request |
 | **Find Templates** (`findTemplates`) | `{ query?, parent_folder_id?, limit?, cursor? }` | `{ data, next_cursor }` |
@@ -73,9 +73,12 @@ The node's help (in the editor's Help sidebar) explains each input. A few that a
 - `version` is a published template version such as `1.2.0`, `latest` (the default for making PDFs) or `draft`.
   Dates in `data` are `YYYY-MM-DD`.
 - Operations that make a PDF wait for it. `wait: false` returns the record straight away, still `pending`.
-- Each signer in a signature request needs `fields`: the names of the fields they fill in. Email signing links
-  last 7 days, API links 24 hours.
-- Lists return a page: pass `next_cursor` back as `cursor` for the next one.
+- Each signer in a signature request needs an `email` and `fields` (the names of the fields they fill in). A signer
+  without an email is left out, as in 0.1, so an empty row for an optional signer creates nothing. Email signing
+  links last 7 days, API links 24 hours.
+- Lists return `{ data, next_cursor }`: pass `next_cursor` back as `cursor` for the next items. In Find Templates
+  and Find Submissions, `limit` is how many to return (default 50), and above 100 the node gets several pages for
+  you. List Folders returns one page (`limit` 1 to 100).
 
 ### Example — generate a PDF
 
@@ -98,13 +101,15 @@ inputs:
 - `createDataRequest`, `findTemplate` and `findSubmission` still work, as operation values and in `msg.operation`.
 - The payload keys `data_requests`, `data_request_id` and `token_type`, `type: "live" | "test"` and the
   `combined_submission` source type still work.
+- `limit` is still how many templates or submissions to return, of any size (the default is now 50, not 20), and
+  signers without an email are still left out.
 
 Check the nodes that read the output:
 
 - The PDF link is `files.pdf.download_url` (it was `download_url`).
 - Data requests are now called signature requests: `signature_requests` and `first_signature_request_id` (were
   `data_requests` and `first_data_request_id`). Each signer needs `fields`.
-- Find Templates and Find Submissions return a page, `{ data, next_cursor }`, instead of an array.
+- Find Templates and Find Submissions return `{ data, next_cursor }` instead of an array.
 - Create Signing Link returns the token: the link is `signature_request_url`.
 
 The [API v2 migration guide](https://docspring.com/docs/api-guide/migrating-to-api-v2/) lists everything that

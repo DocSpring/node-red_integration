@@ -11,12 +11,13 @@ README).
 - **Signature requests.** Data requests are called signature requests: Create Signature Request takes
   `signature_requests` and returns `signature_requests[].signing_url`, `first_signature_request_id` and
   `first_signing_url`. Each signer needs `fields` (API v2 requires them), and can have a `role`,
-  `auth_provider`, `prefilled_values_editable` and `ignore_unknown_fields`. `signing_link_type` picks `email`
-  links (7 days, the default), `api` links (24 hours) or none.
+  `auth_provider`, `prefilled_values_editable` and `ignore_unknown_fields`. Signers without an email are left
+  out, as in 0.1.0. `signing_link_type` picks `email` links (7 days, the default), `api` links (24 hours) or none.
 - **Combined PDFs.** Combine PDFs calls `/combined_pdfs`; the `combined_submission` source type is `combined_pdf`.
-- **Outputs.** The PDF link is `files.pdf.download_url`. Find Templates and Find Submissions return a page,
-  `{ data, next_cursor }`: pass `next_cursor` back as `cursor` for the next page. Create Signing Link returns the
-  token, whose `signature_request_url` is the link.
+- **Outputs.** The PDF link is `files.pdf.download_url`. Find Templates and Find Submissions return
+  `{ data, next_cursor }`: pass `next_cursor` back as `cursor` for the next items. Their `limit` is still how many
+  to return, of any size (the node gets pages of up to 100), but the default is now 50. Create Signing Link returns
+  the token, whose `signature_request_url` is the link.
 - **New operations:** Generate PDFs in a Batch, Get Submission Batch, Check Data, Get Submission, Find
   Submissions, Generate Submission Files, Expire Submission, Get Combined PDF, Get Signature Request, Get
   Template, Create Template, Replace Template PDF, Copy Template, Move Template, Publish Template Version, List,

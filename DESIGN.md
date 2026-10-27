@@ -102,6 +102,12 @@ The payload of each operation is documented in the node's help (`nodes/docspring
   `template_version`.
 - Create Signature Request needs `fields` for every signer (v2 requires them), defaults `auth_type` to
   `email_link`, and makes an `email` signing link per signer unless `signing_link_type` is `api` or `none`.
+- Signer rows without an email (missing, empty or blank) are left out, under `signature_requests` and 0.1.x's
+  `data_requests` alike, in Create Signature Request and Check Data. 0.1.x did this, and flows rely on it: a blank
+  row for an optional signer would otherwise create a signature request nobody is sent, and the submission would
+  wait for it. v2 itself allows a signer without an email; such signers need Make an API Call. With no signer left,
+  Create Signature Request fails before calling the API. An error about a row names its place in the list the flow
+  sent.
 
 ### Outputs
 
@@ -110,7 +116,11 @@ pages). The only additions: Create Signature Request adds `signing_url` to each 
 `first_signature_request_id` and `first_signing_url`. A signing link that can't be created leaves `signing_url`
 null and reports a `node.warn()`; the message still goes on, because the submission exists.
 
-Lists return one page; a flow passes `next_cursor` back as `cursor` for the next one.
+Lists return `{ data, next_cursor }`, and a flow passes `next_cursor` back as `cursor` for the next items. In Find
+Templates and Find Submissions, `limit` is a total, as it was in 0.1.x (where it could be any size): the node gets
+pages of up to 100 (v2's maximum) from `cursor`, each asking for what's still missing, until it has `limit` items or
+`next_cursor` is null, and returns them with the last page's `next_cursor`. Without a `limit` it gets one page (v2's
+default of 50; 0.1.x's default was 20). List Folders is new, so its `limit` is v2's page size (1 to 100).
 
 ### Errors
 
@@ -142,9 +152,11 @@ warns about a major version, and installs pin `~0.1.x`, so 1.0.0 is a deliberate
 - Payload keys: `data_requests` → `signature_requests`, `data_request_id` → `signature_request_id`, `token_type`
   → `type`, `type: "live" | "test"` → `test` (Find Submissions), source type `combined_submission` →
   `combined_pdf`.
+- `limit` (Find Templates, Find Submissions) is still a total, and signer rows without an email are still left out
+  (see Inputs and Outputs above).
 - Outputs are v2's, not 0.1.x's: `download_url` is `files.pdf.download_url`, `data_requests` is
   `signature_requests`, `first_data_request_id` is `first_signature_request_id`, and Find Templates / Find
-  Submissions return a page instead of an array.
+  Submissions return `{ data, next_cursor }` instead of an array.
 
 ## No trigger node (not planned)
 
