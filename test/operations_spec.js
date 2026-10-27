@@ -106,6 +106,53 @@ describe('DocSpring operations', function () {
 		});
 	});
 
+	describe('IDs in paths', function () {
+		// Every operation that puts an ID in the request path, and the payload key it takes it from.
+		const PATH_IDS = [
+			['generatePdf', 'template_id'],
+			['getSubmissionBatch', 'submission_batch_id'],
+			['checkData', 'template_id'],
+			['getSubmission', 'submission_id'],
+			['findSubmissions', 'template_id'],
+			['generateSubmissionFiles', 'submission_id'],
+			['expireSubmission', 'submission_id'],
+			['getCombinedPdf', 'combined_pdf_id'],
+			['createSignatureRequest', 'template_id'],
+			['createSigningLink', 'signature_request_id'],
+			['getSignatureRequest', 'signature_request_id'],
+			['getTemplate', 'template_id'],
+			['replaceTemplatePdf', 'template_id'],
+			['copyTemplate', 'template_id'],
+			['moveTemplate', 'template_id'],
+			['publishTemplateVersion', 'template_id'],
+			['listTemplateFields', 'template_id'],
+			['addTemplateFields', 'template_id'],
+			['updateTemplateFields', 'template_id'],
+			['removeTemplateFields', 'template_id'],
+			['getTemplatePageImages', 'template_id'],
+		];
+
+		it('rejects . and .. as an ID before sending anything', async function () {
+			for (const [operation, key] of PATH_IDS) {
+				for (const value of ['..', ' . ']) {
+					const expected = key + ' must be an ID, not "' + value.trim() + '"';
+					await run(operation, { [key]: value }).should.be.rejectedWith(expected);
+				}
+			}
+			await run('getSignatureRequest', { data_request_id: '..' }).should.be.rejectedWith(
+				'signature_request_id must be an ID, not ".."',
+			);
+			mock.calls.length.should.equal(0);
+		});
+
+		it('encodes an ID, so it stays one path segment', async function () {
+			mock.respond(200, submission());
+			await run('expireSubmission', { submission_id: '../templates/tpl_x' });
+			mock.last.method.should.equal('DELETE');
+			mock.last.path.should.equal('/api/v2/submissions/..%2Ftemplates%2Ftpl_x');
+		});
+	});
+
 	describe('Generate PDF', function () {
 		it('posts to the sync host with version and wait in the query, and returns the submission', async function () {
 			mock.respond(201, submission());

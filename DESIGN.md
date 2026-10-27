@@ -89,6 +89,9 @@ The payload of each operation is documented in the node's help (`nodes/docspring
   lists of names (`fields`, `output_formats`), a Buffer → base64 (`document_base64`), a Date → RFC 3339.
 - Empty values (`undefined`, `null`, `""`) are left out, except `parent_folder_id: null`, which means the root
   (Copy Template, Move Template, Create Template, Create Folder).
+- An ID in a request path is encoded with `encodeURIComponent`, so `../templates/tpl_x` stays one segment. An ID
+  that is `.` or `..` (after trimming) is an error before any request: encoded, it would still move the request to
+  another endpoint (`DELETE /submissions/..` is `DELETE /api/v2/`).
 - `test` is sent only when it's true: v2 rejects `test: false` from a test API token. Find Submissions is the
   exception, where `test: false` filters live submissions.
 - `version` is a query parameter. Making a PDF uses `latest` by default (the latest published version); List

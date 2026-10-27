@@ -27,9 +27,9 @@ README).
   and so do the payload keys `data_requests`, `data_request_id`, `token_type` and `type` (`live` or `test`).
 - **Inputs.** `version` picks the template version (`latest` by default, `draft`, or a published version).
   `true`/`false` and numbers can be strings, and objects and lists JSON strings; a value that can't be converted is
-  an error naming its key. `test` is only sent when it's true, so test API tokens work. Generate PDF also takes
-  `output_formats` (`png` page images) and `field_overrides`, and the operations that make a PDF take
-  `wait: false`.
+  an error naming its key, and so is an ID that is `.` or `..`. `test` is only sent when it's true, so test API
+  tokens work. Generate PDF also takes `output_formats` (`png` page images) and `field_overrides`, and the
+  operations that make a PDF take `wait: false`.
 - **Errors.** Errors show DocSpring's error code, message, the details, the record's ID and the request ID, and a
   Catch node gets the code in `msg.error.code`. A PDF that couldn't be generated (a failure `state`) is an error
   too, and so is one that wasn't ready in time, which names the operation to get it later with.
