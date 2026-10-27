@@ -1,6 +1,11 @@
 module.exports = function (RED) {
 	'use strict';
 
+	const { docSpringRequest } = require('../lib/docspring');
+
+	// The last version of this package that called API v1, for self-hosted servers without v2.
+	const LAST_V1_VERSION = '0.1.0';
+
 	// Config node holding the DocSpring connection: region + custom host (non-secret)
 	// and the API token id/secret (stored encrypted as Node-RED credentials).
 	function DocSpringConfigNode(n) {
@@ -18,18 +23,18 @@ module.exports = function (RED) {
 	});
 
 	// Admin endpoint for the "Test connection" button in the config editor.
-	// Hits GET /authentication with the entered (or already-saved) credentials.
+	// Calls GET /api/v2/authentication with the entered (or already-saved) credentials.
 	RED.httpAdmin.post(
 		'/docspring-config/:id/test',
 		RED.auth.needsPermission('docspring-config.read'),
 		function (req, res) {
-			const { resolveBaseUrl } = require('../lib/regions');
 			const body = req.body || {};
 			const node = RED.nodes.getNode(req.params.id);
+			const saved = (node && node.credentials) || {};
 
-			const tokenId = body.tokenId || (node && node.credentials && node.credentials.tokenId);
-			const tokenSecret =
-				body.tokenSecret || (node && node.credentials && node.credentials.tokenSecret);
+			// The editor sends __PWRD__ for a saved password it doesn't show.
+			const tokenId = body.tokenId || saved.tokenId;
+			const tokenSecret = body.tokenSecret && body.tokenSecret !== '__PWRD__' ? body.tokenSecret : saved.tokenSecret;
 			const region = body.region || (node && node.region) || 'us';
 			const customHost = body.customHost || (node && node.customHost) || '';
 
@@ -38,31 +43,27 @@ module.exports = function (RED) {
 				return;
 			}
 
-			let baseUrl;
-			try {
-				baseUrl = resolveBaseUrl(region, customHost, false);
-			} catch (e) {
-				res.json({ ok: false, message: e.message });
-				return;
-			}
-
-			const headers = {
-				Authorization: 'Basic ' + Buffer.from(tokenId + ':' + tokenSecret).toString('base64'),
-				Accept: 'application/json',
-			};
-			fetch(baseUrl + '/api/v1/authentication', { headers })
-				.then((r) => r.json().then((d) => ({ status: r.status, d })))
-				.then(({ status, d }) => {
-					if (status === 200 && d && d.status === 'success') {
+			docSpringRequest({ region, customHost, tokenId, tokenSecret }, 'GET', '/authentication')
+				.then(function (d) {
+					if (d && d.authenticated === true) {
 						res.json({ ok: true, message: 'Connection successful.' });
 					} else {
-						res.json({
-							ok: false,
-							message: '[' + status + '] Invalid DocSpring API token. Check your ID, secret, and region.',
-						});
+						res.json({ ok: false, message: 'Unexpected response from DocSpring: ' + JSON.stringify(d) });
 					}
 				})
-				.catch((err) => res.json({ ok: false, message: err.message }));
+				.catch(function (err) {
+					let message = err.message;
+					if (err.statusCode === 401) {
+						message = 'Invalid DocSpring API token. Check your ID, secret, and region.';
+					} else if (err.statusCode === 404 && region === 'self_hosted') {
+						message =
+							"This DocSpring server doesn't have API v2 yet. Upgrade it to the latest release, " +
+							'or use version ' +
+							LAST_V1_VERSION +
+							' of this integration.';
+					}
+					res.json({ ok: false, message: message });
+				});
 		},
 	);
 };
