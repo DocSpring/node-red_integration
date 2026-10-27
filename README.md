@@ -76,6 +76,9 @@ The node's help (in the editor's Help sidebar) explains each input. A few that a
 - Each signer in a signature request needs an `email` and `fields` (the names of the fields they fill in). A signer
   without an email is left out, as in 0.1, so an empty row for an optional signer creates nothing. Email signing
   links last 7 days, API links 24 hours.
+- When the account reaches DocSpring's API rate limit (a 429), the node waits as long as DocSpring asks (up to a
+  minute) and tries again, up to 3 times; then the error code is `rate_limited`. Each page of a large `limit` is a
+  request, and test API tokens have a lower limit.
 - Lists return `{ data, next_cursor }`: pass `next_cursor` back as `cursor` for the next items. In Find Templates
   and Find Submissions, `limit` is how many to return (default 50), and above 100 the node gets several pages for
   you. List Folders returns one page (`limit` 1 to 100).

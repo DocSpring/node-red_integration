@@ -134,6 +134,10 @@ DocSpring's error code, or the failure state.
   a template `document.state` of `password_required`, `malformed_pdf`, `unknown_error` or `download_failed`; a
   batch in `error`, naming each failed submission; a Generate Submission Files format in `error`): the state, the
   `error_message` and the record ID.
+- A 429 (rate limit): DocSpring didn't process the request, so `docSpringRequest` sends it again, POSTs included,
+  after `Retry-After` seconds (at least 1), up to 3 times, while each wait is 60 seconds or less. Then it fails with
+  the usual error (`rate_limited`). Every request goes through it, so this covers each page of a large `limit` and
+  the signing links made after a signature request's submission exists. Tests replace `clock.sleep`.
 - A 504 `polling_timeout`: "The PDF wasn't ready in time. Get it later with Get Submission (<id>)." (or Get
   Submission Batch, Get Combined PDF, Get Template). Node-RED has no trigger node, so there's no trigger to point
   to.

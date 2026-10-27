@@ -25,9 +25,9 @@ class MockFetch {
 		this.responses = [];
 	}
 
-	// Queue a JSON response (or a string body, sent as it is).
-	respond(status, body) {
-		this.responses.push({ status, body });
+	// Queue a JSON response (or a string body, sent as it is), with any extra headers.
+	respond(status, body, headers) {
+		this.responses.push({ status, body, headers });
 		return this;
 	}
 
@@ -64,7 +64,8 @@ class MockFetch {
 		if (!next) throw new Error('Unexpected request (the network is blocked in tests): ' + call.method + ' ' + u);
 		if (next.error) throw next.error;
 		const text = typeof next.body === 'string' ? next.body : JSON.stringify(next.body);
-		return new Response(text, { status: next.status, headers: { 'Content-Type': 'application/json' } });
+		const headers = Object.assign({ 'Content-Type': 'application/json' }, next.headers);
+		return new Response(text, { status: next.status, headers });
 	}
 }
 

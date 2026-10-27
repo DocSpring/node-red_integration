@@ -133,6 +133,10 @@
 		message, and <code>msg.error.code</code> its error code (such as <code>invalid_data</code>).
 	</p>
 	<p>
+		When the account reaches DocSpring's API rate limit, the node waits as long as DocSpring asks (up to a
+		minute) and tries again, up to 3 times. After that, the error's code is <code>rate_limited</code>.
+	</p>
+	<p>
 		<code>msg.operation</code> overrides the configured operation, using the names in brackets below. Inputs
 		marked <code>?</code> are optional. <code>true</code>/<code>false</code> and numbers can be strings, and
 		objects and lists can be JSON strings.

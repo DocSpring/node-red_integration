@@ -2,7 +2,8 @@
 
 require('should');
 const { MockFetch } = require('./support/mock_fetch');
-const { docSpringRequest, formatApiError } = require('../lib/docspring');
+const docspring = require('../lib/docspring');
+const { docSpringRequest, formatApiError } = docspring;
 const I = require('../lib/inputs');
 const { version } = require('../package.json');
 
@@ -131,6 +132,67 @@ describe('DocSpring API v2 requests', function () {
 		mock.fail(new Error('getaddrinfo ENOTFOUND api.docspring.com'));
 		const err = await docSpringRequest(US, 'GET', '/x').should.be.rejected();
 		err.message.should.equal("Couldn't reach DocSpring at https://api.docspring.com: getaddrinfo ENOTFOUND api.docspring.com");
+	});
+
+	describe('rate limits (429)', function () {
+		const rateLimited = {
+			error: {
+				code: 'rate_limited',
+				message: 'This account has made too many API requests. Try again in 2 seconds (the Retry-After header).',
+				details: [],
+				request_id: 'req_r',
+			},
+		};
+		let sleeps;
+		let originalSleep;
+		beforeEach(function () {
+			sleeps = [];
+			// No waiting in tests: record each wait instead.
+			if (docspring.clock) {
+				originalSleep = docspring.clock.sleep;
+				docspring.clock.sleep = async (ms) => sleeps.push(ms);
+			}
+		});
+		afterEach(function () {
+			if (docspring.clock) docspring.clock.sleep = originalSleep;
+		});
+
+		it('waits for Retry-After and sends the same request again, a POST too', async function () {
+			mock.respond(429, rateLimited, { 'Retry-After': '7' }).respond(201, { id: 'x' });
+			const result = await docSpringRequest(US, 'POST', '/things', { body: { a: 1 }, qs: { wait: true } });
+			result.should.eql({ id: 'x' });
+			sleeps.should.eql([7000]);
+			mock.calls.length.should.equal(2);
+			for (const call of mock.calls) {
+				call.method.should.equal('POST');
+				call.url.toString().should.equal('https://api.docspring.com/api/v2/things?wait=true');
+				call.body.should.eql({ a: 1 });
+			}
+		});
+
+		it('fails with the API error after three retries', async function () {
+			for (let i = 0; i < 4; i++) mock.respond(429, rateLimited, { 'Retry-After': '2' });
+			const err = await docSpringRequest(US, 'GET', '/templates').should.be.rejected();
+			err.message.should.equal(
+				'DocSpring API error 429 rate_limited: This account has made too many API requests. Try again in 2 seconds ' +
+					'(the Retry-After header).\nRequest ID: req_r',
+			);
+			err.statusCode.should.equal(429);
+			err.code.should.equal('rate_limited');
+			mock.calls.length.should.equal(4);
+			sleeps.should.eql([2000, 2000, 2000]);
+		});
+
+		it('waits at least a second, and fails straight away when Retry-After is over a minute', async function () {
+			mock.respond(429, rateLimited, { 'Retry-After': '0' }).respond(200, { ok: 1 });
+			mock.respond(429, rateLimited).respond(200, { ok: 2 });
+			mock.respond(429, rateLimited, { 'Retry-After': '61' });
+			(await docSpringRequest(US, 'GET', '/x')).should.eql({ ok: 1 });
+			(await docSpringRequest(US, 'GET', '/x')).should.eql({ ok: 2 });
+			(await docSpringRequest(US, 'GET', '/x').should.be.rejected()).statusCode.should.equal(429);
+			sleeps.should.eql([1000, 1000]);
+			mock.calls.length.should.equal(5);
+		});
 	});
 
 	it('needs a host for the self-hosted region', async function () {
