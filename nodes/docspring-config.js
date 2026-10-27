@@ -1,6 +1,12 @@
 module.exports = function (RED) {
 	'use strict';
 
+	const { docSpringRequest } = require('../lib/docspring');
+	const { resolveBaseUrl } = require('../lib/regions');
+
+	// The last version of this package that called API v1, for self-hosted servers without v2.
+	const LAST_V1_VERSION = '0.1.0';
+
 	// Config node holding the DocSpring connection: region + custom host (non-secret)
 	// and the API token id/secret (stored encrypted as Node-RED credentials).
 	function DocSpringConfigNode(n) {
@@ -17,52 +23,69 @@ module.exports = function (RED) {
 		},
 	});
 
+	// The API origin a region and host send requests to, for comparing two configs, or null
+	// when there isn't one (self-hosted without a host).
+	function apiBase(region, customHost) {
+		try {
+			return new URL(resolveBaseUrl(region, customHost)).href;
+		} catch (_e) {
+			return null;
+		}
+	}
+
 	// Admin endpoint for the "Test connection" button in the config editor.
-	// Hits GET /authentication with the entered (or already-saved) credentials.
+	// Calls GET /api/v2/authentication with the entered (or already-saved) credentials.
 	RED.httpAdmin.post(
 		'/docspring-config/:id/test',
 		RED.auth.needsPermission('docspring-config.read'),
 		function (req, res) {
-			const { resolveBaseUrl } = require('../lib/regions');
 			const body = req.body || {};
 			const node = RED.nodes.getNode(req.params.id);
+			const saved = (node && node.credentials) || {};
 
-			const tokenId = body.tokenId || (node && node.credentials && node.credentials.tokenId);
-			const tokenSecret =
-				body.tokenSecret || (node && node.credentials && node.credentials.tokenSecret);
+			const tokenId = body.tokenId || saved.tokenId;
 			const region = body.region || (node && node.region) || 'us';
 			const customHost = body.customHost || (node && node.customHost) || '';
+
+			// The editor sends __PWRD__ for a saved secret it doesn't show. The saved secret only
+			// goes to the saved config's host: this endpoint needs only read permission, and the
+			// region and host come from the request.
+			let tokenSecret = body.tokenSecret && body.tokenSecret !== '__PWRD__' ? body.tokenSecret : undefined;
+			if (!tokenSecret && saved.tokenSecret) {
+				const savedBase = apiBase(node.region, node.customHost);
+				if (!savedBase || savedBase !== apiBase(region, customHost)) {
+					res.json({ ok: false, message: 'Type the Token Secret again to test a different region or host.' });
+					return;
+				}
+				tokenSecret = saved.tokenSecret;
+			}
 
 			if (!tokenId || !tokenSecret) {
 				res.json({ ok: false, message: 'Enter a Token ID and Token Secret first.' });
 				return;
 			}
 
-			let baseUrl;
-			try {
-				baseUrl = resolveBaseUrl(region, customHost, false);
-			} catch (e) {
-				res.json({ ok: false, message: e.message });
-				return;
-			}
-
-			const headers = {
-				Authorization: 'Basic ' + Buffer.from(tokenId + ':' + tokenSecret).toString('base64'),
-				Accept: 'application/json',
-			};
-			fetch(baseUrl + '/api/v1/authentication', { headers })
-				.then((r) => r.json().then((d) => ({ status: r.status, d })))
-				.then(({ status, d }) => {
-					if (status === 200 && d && d.status === 'success') {
+			docSpringRequest({ region, customHost, tokenId, tokenSecret }, 'GET', '/authentication')
+				.then(function (d) {
+					if (d && d.authenticated === true) {
 						res.json({ ok: true, message: 'Connection successful.' });
 					} else {
-						res.json({
-							ok: false,
-							message: '[' + status + '] Invalid DocSpring API token. Check your ID, secret, and region.',
-						});
+						res.json({ ok: false, message: 'Unexpected response from DocSpring: ' + JSON.stringify(d) });
 					}
 				})
-				.catch((err) => res.json({ ok: false, message: err.message }));
+				.catch(function (err) {
+					let message = err.message;
+					if (err.statusCode === 401) {
+						message = 'Invalid DocSpring API token. Check your ID, secret, and region.';
+					} else if (err.statusCode === 404 && region === 'self_hosted') {
+						message =
+							"This DocSpring server doesn't have API v2 yet. Upgrade it to the latest release, " +
+							'or use version ' +
+							LAST_V1_VERSION +
+							' of this integration.';
+					}
+					res.json({ ok: false, message: message });
+				});
 		},
 	);
 };

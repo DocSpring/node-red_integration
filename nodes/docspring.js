@@ -1,11 +1,11 @@
 module.exports = function (RED) {
 	'use strict';
 
-	const { OPERATIONS, OPERATION_LABELS } = require('../lib/operations');
+	const { OPERATIONS, OPERATION_LABELS, resolveOperation } = require('../lib/operations');
 
 	// One action node with an Operation selector. Request parameters come from
-	// msg.payload (or msg.operation overrides the configured operation); the API
-	// response is written back to msg.payload.
+	// msg.payload (msg.operation overrides the configured operation); the API v2
+	// response is written back to msg.payload. Operation values from 0.1.x still work.
 	function DocSpringNode(config) {
 		RED.nodes.createNode(this, config);
 		const node = this;
@@ -19,15 +19,21 @@ module.exports = function (RED) {
 					node.send.apply(node, arguments);
 				};
 			const fail = function (err) {
-				node.status({ fill: 'red', shape: 'ring', text: String(err.message || err).slice(0, 20) });
+				// "HTTP 422 invalid_data", or the failure state of a record that was created.
+				const status = err.statusCode ? 'HTTP ' + err.statusCode + (err.code ? ' ' + err.code : '') : err.code || 'error';
+				node.status({ fill: 'red', shape: 'ring', text: status });
 				if (done) done(err);
 				else node.error(err, msg);
 			};
 
-			const operation = msg.operation || node.operation;
-			const handler = OPERATIONS[operation];
-			if (!handler) {
-				fail(new Error('Unknown DocSpring operation: ' + operation));
+			const params =
+				msg.payload && typeof msg.payload === 'object' && !Array.isArray(msg.payload) && !Buffer.isBuffer(msg.payload)
+					? msg.payload
+					: {};
+			const requested = msg.operation || node.operation;
+			const operation = resolveOperation(requested, params);
+			if (!operation) {
+				fail(new Error('Unknown DocSpring operation: ' + requested));
 				return;
 			}
 			if (!node.server || !node.server.credentials || !node.server.credentials.tokenId) {
@@ -41,13 +47,17 @@ module.exports = function (RED) {
 				tokenId: node.server.credentials.tokenId,
 				tokenSecret: node.server.credentials.tokenSecret,
 			};
-			const params =
-				msg.payload && typeof msg.payload === 'object' && !Array.isArray(msg.payload)
-					? msg.payload
-					: {};
+			const ctx = {
+				warn: function (message) {
+					node.warn(message);
+				},
+			};
 
-			node.status({ fill: 'blue', shape: 'dot', text: OPERATION_LABELS[operation] || operation });
-			Promise.resolve(handler(conn, params))
+			node.status({ fill: 'blue', shape: 'dot', text: OPERATION_LABELS[operation] });
+			Promise.resolve()
+				.then(function () {
+					return OPERATIONS[operation](conn, params, ctx);
+				})
 				.then(function (result) {
 					msg.payload = result;
 					node.status({ fill: 'green', shape: 'dot', text: 'done' });

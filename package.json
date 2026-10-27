@@ -1,6 +1,6 @@
 {
   "name": "@docspring/node-red-docspring",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "description": "Node-RED nodes for DocSpring — generate, combine, and sign PDFs from your templates.",
   "keywords": [
     "node-red",

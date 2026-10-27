@@ -3,6 +3,8 @@
 [Node-RED](https://nodered.org) nodes for [DocSpring](https://docspring.com) — turn
 structured data into filled, downloadable, and **signable** PDFs from your flows.
 
+Version 1.0 calls DocSpring API v2. Upgrading from 0.1? See [Upgrading from 0.1](#upgrading-from-01).
+
 ## Install
 
 From the Node-RED editor: **Menu → Manage palette → Install**, search for
@@ -21,22 +23,64 @@ Add a **DocSpring** configuration (on the node, or via the config-nodes list):
 choose your **Region** (US / EU / Self-hosted), and paste the **Token ID** and
 **Token Secret** from the DocSpring web app (**Settings → API Tokens**). Click
 **Test connection** to confirm it works. Credentials are stored encrypted by
-Node-RED and never leave your instance.
+Node-RED and never leave your instance. **Test connection** uses a saved Token Secret only with the saved region and
+host: to test a different one, type the Token Secret again.
+
+Self-hosted (Enterprise) servers need a DocSpring release with API v2. If **Test connection** says your server
+doesn't have API v2 yet, upgrade it, or keep using version 0.1.0 of these nodes until you do.
 
 ## Usage
 
-Drop a **DocSpring** node into a flow, pick an **Operation**, and pass its parameters
-in `msg.payload`. The API response is written back to `msg.payload`; errors are sent
-to a **Catch** node. You can override the operation per message with `msg.operation`.
+Drop a **DocSpring** node into a flow, pick an **Operation**, and pass its inputs in `msg.payload`. The API's
+response is written back to `msg.payload`. Errors go to a **Catch** node, with DocSpring's message in
+`msg.error.message` and its error code in `msg.error.code`. You can override the operation per message with
+`msg.operation` (the value in brackets below).
 
 | Operation | `msg.payload` in | out |
 |---|---|---|
-| **Generate PDF** | `{ template_id, data: {…}, test?, password?, expires_in?, … }` | the processed submission (+ `download_url`) |
-| **Combine PDFs** | `{ source_pdfs: [{ type, id\|url, template_version? }], … }` | the combined submission |
-| **Create Data Request** | `{ template_id, data_requests: [{ email, name?, fields?, auth_type? }], … }` | submission + a `signing_url` per recipient |
-| **Create Signing Link** | `{ data_request_id, token_type?: "email"\|"api" }` | the `signing_url` |
-| **Find Template** | `{ query?, limit? }` | array of templates |
-| **Find Submission** | `{ submission_id }` or `{ type?, created_after?, created_before?, limit? }` | submission(s) |
+| **Generate PDF** (`generatePdf`) | `{ template_id, data: {…}, version?, test?, metadata?, output_formats?, password?, expires_in?, field_overrides?, editable?, wait? }` | the submission; `files.pdf.download_url` is the PDF |
+| **Generate PDFs in a Batch** (`createSubmissionBatch`) | `{ template_id?, template_version?, test?, metadata?, output_formats?, submissions: [{ data, metadata?, field_overrides?, … }], wait? }` | the batch |
+| **Get Submission Batch** (`getSubmissionBatch`) | `{ submission_batch_id, include_data? }` | the batch |
+| **Check Data** (`checkData`) | `{ template_id, data, version?, test?, signature_requests? }` | `{ valid, error? }` |
+| **Get Submission** (`getSubmission`) | `{ submission_id }` | the submission |
+| **Find Submissions** (`findSubmissions`) | `{ template_id?, test?, created_after?, created_before?, include_data?, limit?, cursor? }` | `{ data, next_cursor }` |
+| **Generate Submission Files** (`generateSubmissionFiles`) | `{ submission_id, formats?: ["png"], wait? }` | the submission, with `files.png` |
+| **Expire Submission** (`expireSubmission`) | `{ submission_id }` | the expired submission |
+| **Combine PDFs** (`combinePdfs`) | `{ source_pdfs: [{ type, id \| url, template_version?, processed? }], metadata?, password?, expires_in?, wait? }` | the combined PDF |
+| **Get Combined PDF** (`getCombinedPdf`) | `{ combined_pdf_id }` | the combined PDF |
+| **Create Signature Request** (`createSignatureRequest`) | `{ template_id, data?, version?, test?, metadata?, signature_requests: [{ name?, email?, role?, fields, auth_type?, auth_provider?, prefilled_values_editable?, ignore_unknown_fields? }], signing_link_type? }` | the submission, with a `signing_url` per signature request |
+| **Create Signing Link** (`createSigningLink`) | `{ signature_request_id, type?: "email" \| "api" }` | the token; `signature_request_url` is the link |
+| **Get Signature Request** (`getSignatureRequest`) | `{ signature_request_id }` | the signature request |
+| **Find Templates** (`findTemplates`) | `{ query?, parent_folder_id?, limit?, cursor? }` | `{ data, next_cursor }` |
+| **Get Template** (`getTemplate`) | `{ template_id }` | the template |
+| **Create Template** (`createTemplate`) | `{ template_type: "pdf" \| "html", name?, document_url? \| document_base64?, filename?, detect_fields?, html?, scss?, … }` | the template |
+| **Replace Template PDF** (`replaceTemplatePdf`) | `{ template_id, document_url? \| document_base64?, filename?, reimport_fields?, wait? }` | the template |
+| **Copy Template** (`copyTemplate`) | `{ template_id, name?, parent_folder_id?, version? }` | the copy |
+| **Move Template** (`moveTemplate`) | `{ template_id, parent_folder_id }` (`null` = the root) | the template |
+| **Publish Template Version** (`publishTemplateVersion`) | `{ template_id, version_type: "patch" \| "minor" \| "major", description? }` | the template |
+| **List Template Fields** (`listTemplateFields`) | `{ template_id, version? }` | `{ template_id, version, fields }` |
+| **Add Template Fields** (`addTemplateFields`) | `{ template_id, fields: [{ name, type, page, x, y, width, height, … }] }` | the fields |
+| **Update Template Fields** (`updateTemplateFields`) | `{ template_id, fields: [{ id, … }] }` | the fields |
+| **Remove Template Fields** (`removeTemplateFields`) | `{ template_id, field_ids: [1, 2] }` | the fields |
+| **Get Template Page Images** (`getTemplatePageImages`) | `{ template_id, version? }` | an image of each page |
+| **List Folders** (`listFolders`) | `{ parent_folder_id?, limit?, cursor? }` | `{ data, next_cursor }` |
+| **Create Folder** (`createFolder`) | `{ name, parent_folder_id? }` | the folder |
+| **Make an API Call** (`apiCall`) | `{ method?, path, query?, body? }` (`path` relative to `/api/v2`) | the response |
+
+The node's help (in the editor's Help sidebar) explains each input. A few that apply throughout:
+
+- `true`/`false` and numbers can be strings, and objects and lists can be JSON strings.
+- `version` is a published template version such as `1.2.0`, `latest` (the default for making PDFs) or `draft`.
+  Dates in `data` are `YYYY-MM-DD`.
+- Operations that make a PDF wait for it. `wait: false` returns the record straight away, still `pending`.
+- Each signer in a signature request needs `fields`: the names of the fields they fill in. `email` is optional, for
+  a signer who signs in your own page through an `api` link. Email signing links last 7 days, API links 24 hours.
+- When the account reaches DocSpring's API rate limit (a 429), the node waits as long as DocSpring asks (up to a
+  minute) and tries again, up to 3 times; then the error code is `rate_limited`. Each page of a large `limit` is a
+  request, and test API tokens have a lower limit.
+- Lists return `{ data, next_cursor }`: pass `next_cursor` back as `cursor` for the next items. In Find Templates
+  and Find Submissions, `limit` is how many to return (default 50), and above 100 the node gets several pages for
+  you. List Folders returns one page (`limit` 1 to 100).
 
 ### Example — generate a PDF
 
@@ -49,11 +93,38 @@ An **inject** node with this payload, wired into a **DocSpring** node (Operation
   "test": true }
 ```
 
-`msg.payload` then contains the submission, including `download_url`.
+`msg.payload` then contains the submission; `msg.payload.files.pdf.download_url` is a link to the PDF.
+
+## Upgrading from 0.1
+
+1.0 uses DocSpring API v2, so the output of each operation changes. Flows saved with 0.1 keep most of their
+operations and inputs:
+
+- `findTemplate` and `findSubmission` still work, as operation values and in `msg.operation`.
+- The payload keys `token_type`, `type: "live" | "test"` and the `combined_submission` source type still work.
+- `limit` is still how many templates or submissions to return, of any size (the default is now 50, not 20).
+
+Signature requests use only their own names now, so update the nodes that make them:
+
+- Open each saved Create Signature Request node and pick the operation again, and use `createSignatureRequest` in
+  `msg.operation`.
+- Send the signers as `signature_requests` (each with `fields`), and the ID as `signature_request_id`. Every signer
+  is sent, so leave out rows for signers you don't need.
+
+Check the nodes that read the output:
+
+- The PDF link is `files.pdf.download_url` (it was `download_url`).
+- Create Signature Request returns `signature_requests` and `first_signature_request_id`.
+- Find Templates and Find Submissions return `{ data, next_cursor }` instead of an array.
+- Create Signing Link returns the token: the link is `signature_request_url`.
+
+The [API v2 migration guide](https://docspring.com/docs/api-guide/migrating-to-api-v2/) lists everything that
+changed.
 
 ## Resources
 
 - [DocSpring documentation](https://docspring.com/docs)
+- [API v2 reference](https://docspring.com/docs/api/)
 - [Node-RED community nodes](https://flows.nodered.org)
 
 ## License

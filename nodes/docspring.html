@@ -1,28 +1,71 @@
 <script type="text/javascript">
-	RED.nodes.registerType('docspring', {
-		category: 'DocSpring',
-		color: '#87b7e8',
-		defaults: {
-			name: { value: '' },
-			operation: { value: 'generatePdf', required: true },
-			server: { value: '', type: 'docspring-config', required: true },
-		},
-		inputs: 1,
-		outputs: 1,
-		icon: 'docspring.svg',
-		paletteLabel: 'DocSpring',
-		label: function () {
-			var labels = {
-				generatePdf: 'Generate PDF',
-				combinePdfs: 'Combine PDFs',
-				createDataRequest: 'Create Data Request',
-				createSigningLink: 'Create Signing Link',
-				findTemplate: 'Find Template',
-				findSubmission: 'Find Submission',
-			};
-			return this.name || 'DocSpring: ' + (labels[this.operation] || this.operation);
-		},
-	});
+	(function () {
+		var LABELS = {
+			generatePdf: 'Generate PDF',
+			createSubmissionBatch: 'Generate PDFs in a Batch',
+			getSubmissionBatch: 'Get Submission Batch',
+			checkData: 'Check Data',
+			getSubmission: 'Get Submission',
+			findSubmissions: 'Find Submissions',
+			generateSubmissionFiles: 'Generate Submission Files',
+			expireSubmission: 'Expire Submission',
+			combinePdfs: 'Combine PDFs',
+			getCombinedPdf: 'Get Combined PDF',
+			createSignatureRequest: 'Create Signature Request',
+			createSigningLink: 'Create Signing Link',
+			getSignatureRequest: 'Get Signature Request',
+			findTemplates: 'Find Templates',
+			getTemplate: 'Get Template',
+			createTemplate: 'Create Template',
+			replaceTemplatePdf: 'Replace Template PDF',
+			copyTemplate: 'Copy Template',
+			moveTemplate: 'Move Template',
+			publishTemplateVersion: 'Publish Template Version',
+			listTemplateFields: 'List Template Fields',
+			addTemplateFields: 'Add Template Fields',
+			updateTemplateFields: 'Update Template Fields',
+			removeTemplateFields: 'Remove Template Fields',
+			getTemplatePageImages: 'Get Template Page Images',
+			listFolders: 'List Folders',
+			createFolder: 'Create Folder',
+			apiCall: 'Make an API Call',
+		};
+		// Operation values from 0.1.x that saved flows hold, and the operation each one runs.
+		var ALIASES = {
+			findTemplate: 'findTemplates',
+		};
+		// 0.1.x's findSubmission got one submission (with submission_id) or a list, so it has
+		// no single replacement: it stays until someone picks Get Submission or Find Submissions.
+		var FIND_SUBMISSION_LABEL = 'Find Submission (Get Submission or Find Submissions)';
+
+		RED.nodes.registerType('docspring', {
+			category: 'DocSpring',
+			color: '#87b7e8',
+			defaults: {
+				name: { value: '' },
+				operation: { value: 'generatePdf', required: true },
+				server: { value: '', type: 'docspring-config', required: true },
+			},
+			inputs: 1,
+			outputs: 1,
+			icon: 'docspring.svg',
+			paletteLabel: 'DocSpring',
+			label: function () {
+				var operation = ALIASES[this.operation] || this.operation;
+				var label = this.operation === 'findSubmission' ? 'Find Submission' : LABELS[operation] || operation;
+				return this.name || 'DocSpring: ' + label;
+			},
+			oneditprepare: function () {
+				var select = $('#node-input-operation');
+				if (ALIASES[this.operation]) {
+					select.val(ALIASES[this.operation]);
+				} else if (this.operation === 'findSubmission') {
+					$('<option>').val('findSubmission').text(FIND_SUBMISSION_LABEL).prependTo(select);
+					select.val('findSubmission');
+				}
+			},
+		});
+	})();
 </script>
 
 <script type="text/html" data-template-name="docspring">
@@ -37,41 +80,275 @@
 	<div class="form-row">
 		<label for="node-input-operation"><i class="fa fa-cogs"></i> Operation</label>
 		<select id="node-input-operation" style="width:70%">
-			<option value="generatePdf">Generate PDF</option>
-			<option value="combinePdfs">Combine PDFs</option>
-			<option value="createDataRequest">Create Data Request</option>
-			<option value="createSigningLink">Create Signing Link</option>
-			<option value="findTemplate">Find Template</option>
-			<option value="findSubmission">Find Submission</option>
+			<optgroup label="Submissions">
+				<option value="generatePdf">Generate PDF</option>
+				<option value="createSubmissionBatch">Generate PDFs in a Batch</option>
+				<option value="getSubmissionBatch">Get Submission Batch</option>
+				<option value="checkData">Check Data</option>
+				<option value="getSubmission">Get Submission</option>
+				<option value="findSubmissions">Find Submissions</option>
+				<option value="generateSubmissionFiles">Generate Submission Files</option>
+				<option value="expireSubmission">Expire Submission</option>
+			</optgroup>
+			<optgroup label="Combined PDFs">
+				<option value="combinePdfs">Combine PDFs</option>
+				<option value="getCombinedPdf">Get Combined PDF</option>
+			</optgroup>
+			<optgroup label="Signature requests">
+				<option value="createSignatureRequest">Create Signature Request</option>
+				<option value="createSigningLink">Create Signing Link</option>
+				<option value="getSignatureRequest">Get Signature Request</option>
+			</optgroup>
+			<optgroup label="Templates">
+				<option value="findTemplates">Find Templates</option>
+				<option value="getTemplate">Get Template</option>
+				<option value="createTemplate">Create Template</option>
+				<option value="replaceTemplatePdf">Replace Template PDF</option>
+				<option value="copyTemplate">Copy Template</option>
+				<option value="moveTemplate">Move Template</option>
+				<option value="publishTemplateVersion">Publish Template Version</option>
+				<option value="listTemplateFields">List Template Fields</option>
+				<option value="addTemplateFields">Add Template Fields</option>
+				<option value="updateTemplateFields">Update Template Fields</option>
+				<option value="removeTemplateFields">Remove Template Fields</option>
+				<option value="getTemplatePageImages">Get Template Page Images</option>
+			</optgroup>
+			<optgroup label="Folders">
+				<option value="listFolders">List Folders</option>
+				<option value="createFolder">Create Folder</option>
+			</optgroup>
+			<optgroup label="Other">
+				<option value="apiCall">Make an API Call</option>
+			</optgroup>
 		</select>
 	</div>
 </script>
 
 <script type="text/html" data-help-name="docspring">
 	<p>
-		Calls the <a href="https://docspring.com/docs" target="_blank">DocSpring API</a>. Choose an
-		<b>Operation</b>; pass its parameters in <code>msg.payload</code>. The API response is written
-		back to <code>msg.payload</code>. Errors are sent to a <b>Catch</b> node.
+		Calls the <a href="https://docspring.com/docs/api/" target="_blank">DocSpring API</a> (v2). Choose an
+		<b>Operation</b> and pass its inputs in <code>msg.payload</code>. The API's response is written back to
+		<code>msg.payload</code>. Errors go to a <b>Catch</b> node: <code>msg.error.message</code> has DocSpring's
+		message, and <code>msg.error.code</code> its error code (such as <code>invalid_data</code>).
 	</p>
-	<p>You can override the configured operation per message with <code>msg.operation</code>.</p>
+	<p>
+		When the account reaches DocSpring's API rate limit, the node waits as long as DocSpring asks (up to a
+		minute) and tries again, up to 3 times. After that, the error's code is <code>rate_limited</code>.
+	</p>
+	<p>
+		<code>msg.operation</code> overrides the configured operation, using the names in brackets below. Inputs
+		marked <code>?</code> are optional. <code>true</code>/<code>false</code> and numbers can be strings, and
+		objects and lists can be JSON strings.
+	</p>
+	<p>
+		<code>version</code> picks the template version: a published version such as <code>1.2.0</code>
+		(<code>1</code> for the latest 1.x.x), <code>latest</code> or <code>draft</code>. To make PDFs, the default
+		is <code>latest</code>: the latest published version (the draft until one is published). Dates in
+		<code>data</code> are <code>YYYY-MM-DD</code>.
+	</p>
+	<p>
+		The operations that make a PDF wait for it. Set <code>wait: false</code> to get the record back straight
+		away, still <code>pending</code>, and get it later. If a PDF isn't ready in time, the error names the
+		operation and ID to get it with.
+	</p>
 
 	<h3>Generate PDF</h3>
-	<p><code>msg.payload = { template_id, data: { field: value, ... }, test?, metadata?, password?, editable?, expires_in?, version? }</code></p>
-	<p>Returns the processed submission (with <code>download_url</code>).</p>
+	<p>(<code>generatePdf</code>)</p>
+	<p><code>msg.payload = { template_id, data: { field: value, … }, version?, test?, metadata?, output_formats?: ["pdf", "png"], password?, expires_in?, field_overrides?, editable?, wait? }</code></p>
+	<p>
+		Returns the submission. <code>files.pdf.download_url</code> is a link to the PDF, and
+		<code>files.pdf.permanent_url</code> one that doesn't expire. <code>expires_in</code> is in seconds;
+		<code>png</code> in <code>output_formats</code> adds an image of each page (<code>files.png</code>).
+	</p>
+
+	<h3>Generate PDFs in a Batch</h3>
+	<p>(<code>createSubmissionBatch</code>)</p>
+	<p><code>msg.payload = { template_id?, template_version?, test?, metadata?, output_formats?, submissions: [ { data, metadata?, field_overrides?, template_id?, template_version?, test?, editable?, password?, expires_in?, output_formats? } ], wait? }</code></p>
+	<p>
+		Up to 50 submissions. Each one uses the batch's <code>template_id</code> unless it names its own. Returns
+		the batch, with its submissions.
+	</p>
+
+	<h3>Get Submission Batch</h3>
+	<p>(<code>getSubmissionBatch</code>)</p>
+	<p><code>msg.payload = { submission_batch_id, include_data? }</code></p>
+
+	<h3>Check Data</h3>
+	<p>(<code>checkData</code>)</p>
+	<p><code>msg.payload = { template_id, data, version?, test?, signature_requests? }</code></p>
+	<p>
+		Checks the data against the template without creating anything. <code>signature_requests</code> are the
+		signers, as in Create Signature Request. Returns <code>{ valid, template_id, template_version, error?
+		}</code>: when <code>valid</code> is false, <code>error</code> is what Generate PDF would return.
+	</p>
+
+	<h3>Get Submission</h3>
+	<p>(<code>getSubmission</code>)</p>
+	<p><code>msg.payload = { submission_id }</code></p>
+
+	<h3>Find Submissions</h3>
+	<p>(<code>findSubmissions</code>)</p>
+	<p><code>msg.payload = { template_id?, test?, created_after?, created_before?, include_data?, limit?, cursor? }</code></p>
+	<p>
+		Returns <code>{ data: [ … ], next_cursor }</code>, newest first. <code>limit</code> is how many to return
+		(default 50): above 100, the node gets several pages for you. Send <code>next_cursor</code> back as
+		<code>cursor</code> for the ones after those (it's null when there are no more).
+		<code>test</code>: true for test submissions, false for live ones, left out for both. Times are RFC 3339,
+		such as <code>2026-01-31T09:00:00Z</code>.
+	</p>
+
+	<h3>Generate Submission Files</h3>
+	<p>(<code>generateSubmissionFiles</code>)</p>
+	<p><code>msg.payload = { submission_id, formats?: ["png"], wait? }</code></p>
+	<p>Adds an image of each page to a processed submission. Returns the submission, with <code>files.png</code>.</p>
+
+	<h3>Expire Submission</h3>
+	<p>(<code>expireSubmission</code>)</p>
+	<p><code>msg.payload = { submission_id }</code></p>
+	<p>Deletes the submission's data and files. Returns the expired submission.</p>
 
 	<h3>Combine PDFs</h3>
-	<p><code>msg.payload = { source_pdfs: [ { type: "submission"|"template"|"combined_submission"|"custom_file"|"url", id?, url?, template_version? } ], password?, expires_in?, metadata? }</code></p>
+	<p>(<code>combinePdfs</code>)</p>
+	<p><code>msg.payload = { source_pdfs: [ { type, id?, url?, template_version?, processed? } ], metadata?, password?, expires_in?, wait? }</code></p>
+	<p>
+		Each source's <code>type</code> is <code>submission</code> (the default), <code>combined_pdf</code>,
+		<code>template</code>, <code>custom_file</code> (each with an <code>id</code>) or <code>url</code> (with a
+		<code>url</code>). <code>template_version</code> and <code>processed</code> are only for template sources.
+		Returns the combined PDF; <code>files.pdf.download_url</code> is a link to it.
+	</p>
 
-	<h3>Create Data Request</h3>
-	<p><code>msg.payload = { template_id, data?, data_requests: [ { email, name?, fields?, auth_type? } ], test?, expires_in?, version? }</code></p>
-	<p>Returns a submission awaiting data requests, plus a 30-day <code>signing_url</code> per recipient.</p>
+	<h3>Get Combined PDF</h3>
+	<p>(<code>getCombinedPdf</code>)</p>
+	<p><code>msg.payload = { combined_pdf_id }</code></p>
+
+	<h3>Create Signature Request</h3>
+	<p>(<code>createSignatureRequest</code>)</p>
+	<p><code>msg.payload = { template_id, data?, version?, test?, metadata?, expires_in?, signature_requests: [ { name?, email?, role?, fields: ["field", …], auth_type?, auth_provider?, prefilled_values_editable?, ignore_unknown_fields? } ], signing_link_type? }</code></p>
+	<p>
+		Each signer needs <code>fields</code>: the names of the fields they fill in (a list, or text separated by
+		commas). <code>email</code> is optional, for a signer who signs in your own page through an
+		<code>api</code> link. Every signer in the list is sent. A field can only be in one signature request.
+		<code>auth_type</code> is <code>email_link</code> (the default), <code>password</code>, <code>oauth</code>
+		(with <code>auth_provider</code>), <code>phone_number</code>, <code>ldap</code> or <code>saml</code>. A field
+		that <code>data</code> fills in needs <code>prefilled_values_editable</code>.
+	</p>
+	<p>
+		Returns the submission, waiting for its signature requests. Each signature request gets a
+		<code>signing_url</code>, and <code>first_signature_request_id</code> and <code>first_signing_url</code> are
+		the first one's. <code>signing_link_type</code>: <code>email</code> (the default, a link for 7 days),
+		<code>api</code> (24 hours) or <code>none</code>.
+	</p>
 
 	<h3>Create Signing Link</h3>
-	<p><code>msg.payload = { data_request_id, token_type?: "email"|"api" }</code> → returns the <code>signing_url</code>.</p>
+	<p>(<code>createSigningLink</code>)</p>
+	<p><code>msg.payload = { signature_request_id, type?: "email" | "api" }</code></p>
+	<p>
+		Returns the token; <code>signature_request_url</code> is the link. An <code>email</code> link (the default)
+		opens the signature request for 7 days, an <code>api</code> link for 24 hours.
+	</p>
 
-	<h3>Find Template</h3>
-	<p><code>msg.payload = { query?, limit? }</code> → an array of templates.</p>
+	<h3>Get Signature Request</h3>
+	<p>(<code>getSignatureRequest</code>)</p>
+	<p><code>msg.payload = { signature_request_id }</code></p>
 
-	<h3>Find Submission</h3>
-	<p><code>msg.payload = { submission_id }</code> (single) or <code>{ type?, created_after?, created_before?, limit? }</code> (list).</p>
+	<h3>Find Templates</h3>
+	<p>(<code>findTemplates</code>)</p>
+	<p><code>msg.payload = { query?, parent_folder_id?, limit?, cursor? }</code></p>
+	<p>
+		<code>query</code> matches template names. Returns <code>{ data: [ … ], next_cursor }</code>, and takes
+		<code>limit</code> and <code>cursor</code>, as Find Submissions does.
+	</p>
+
+	<h3>Get Template</h3>
+	<p>(<code>getTemplate</code>)</p>
+	<p><code>msg.payload = { template_id }</code></p>
+	<p>Its fields are in List Template Fields.</p>
+
+	<h3>Create Template</h3>
+	<p>(<code>createTemplate</code>)</p>
+	<p><code>msg.payload = { template_type: "pdf" | "html", name?, parent_folder_id?, document_url?, document_base64?, filename?, detect_fields?, field_source?, field_naming?, field_logic?, html?, scss?, header_html?, footer_html?, wait? }</code></p>
+	<p>
+		A PDF template takes its PDF from <code>document_url</code> (a public https:// link) or
+		<code>document_base64</code> with a <code>filename</code>. <code>document_base64</code> can be a Buffer,
+		such as a File In node's output. <code>detect_fields: true</code> sets up the fields with AI
+		(<code>field_source</code>, <code>field_naming</code>, <code>field_logic</code>). An HTML template takes
+		<code>html</code> and <code>scss</code>. Returns the template.
+	</p>
+
+	<h3>Replace Template PDF</h3>
+	<p>(<code>replaceTemplatePdf</code>)</p>
+	<p><code>msg.payload = { template_id, document_url?, document_base64?, filename?, reimport_fields?, wait? }</code></p>
+
+	<h3>Copy Template</h3>
+	<p>(<code>copyTemplate</code>)</p>
+	<p><code>msg.payload = { template_id, name?, parent_folder_id?, version? }</code></p>
+	<p>
+		<code>parent_folder_id: null</code> puts the copy at the root; left out, it goes in the template's folder.
+		<code>version</code> copies a published version instead of the draft.
+	</p>
+
+	<h3>Move Template</h3>
+	<p>(<code>moveTemplate</code>)</p>
+	<p><code>msg.payload = { template_id, parent_folder_id }</code></p>
+	<p><code>parent_folder_id: null</code> moves it to the root.</p>
+
+	<h3>Publish Template Version</h3>
+	<p>(<code>publishTemplateVersion</code>)</p>
+	<p><code>msg.payload = { template_id, version_type: "patch" | "minor" | "major", description? }</code></p>
+
+	<h3>List Template Fields</h3>
+	<p>(<code>listTemplateFields</code>)</p>
+	<p><code>msg.payload = { template_id, version? }</code></p>
+	<p>Returns <code>{ template_id, version, fields }</code>. Here <code>version</code> defaults to the draft.</p>
+
+	<h3>Add Template Fields</h3>
+	<p>(<code>addTemplateFields</code>)</p>
+	<p><code>msg.payload = { template_id, fields: [ { name, type, page, x, y, width, height, … } ] }</code></p>
+	<p>The field settings are in the API reference (addTemplateFields).</p>
+
+	<h3>Update Template Fields</h3>
+	<p>(<code>updateTemplateFields</code>)</p>
+	<p><code>msg.payload = { template_id, fields: [ { id, … } ] }</code></p>
+	<p>Each change names the <code>id</code> of the field it changes. Settings left out keep their values.</p>
+
+	<h3>Remove Template Fields</h3>
+	<p>(<code>removeTemplateFields</code>)</p>
+	<p><code>msg.payload = { template_id, field_ids: [1, 2] }</code></p>
+
+	<h3>Get Template Page Images</h3>
+	<p>(<code>getTemplatePageImages</code>)</p>
+	<p><code>msg.payload = { template_id, version? }</code></p>
+	<p>Returns an image of each page. Here <code>version</code> defaults to the draft.</p>
+
+	<h3>List Folders</h3>
+	<p>(<code>listFolders</code>)</p>
+	<p><code>msg.payload = { parent_folder_id?, limit?, cursor? }</code></p>
+	<p>
+		Without <code>parent_folder_id</code>, it lists every folder. Returns a page, <code>{ data: [ … ],
+		next_cursor }</code>: <code>limit</code> is 1 to 100 (default 50), and <code>next_cursor</code> goes back as
+		<code>cursor</code> for the next page.
+	</p>
+
+	<h3>Create Folder</h3>
+	<p>(<code>createFolder</code>)</p>
+	<p><code>msg.payload = { name, parent_folder_id? }</code></p>
+
+	<h3>Make an API Call</h3>
+	<p>(<code>apiCall</code>)</p>
+	<p><code>msg.payload = { method?: "GET", path: "/templates", query?: { … }, body?: { … } }</code></p>
+	<p>
+		Calls any API v2 endpoint with this connection. <code>path</code> is relative to <code>/api/v2</code>. It
+		doesn't wait for PDFs: use the operations above for that.
+	</p>
+
+	<h3>Flows from version 0.1</h3>
+	<p>
+		The operation values <code>findTemplate</code> and <code>findSubmission</code> still work, and so do the
+		payload keys <code>token_type</code>, <code>type</code> (<code>live</code> or <code>test</code>) and the
+		<code>combined_submission</code> source type. <code>limit</code> is still how many templates or submissions
+		to return. Signature requests use only their own names: pick Create Signature Request again in a saved
+		node, and send <code>signature_requests</code> and <code>signature_request_id</code>. The output is API
+		v2's: for example, the PDF link is <code>files.pdf.download_url</code>, and Find Templates and Find
+		Submissions return <code>{ data, next_cursor }</code> instead of a list.
+	</p>
 </script>
