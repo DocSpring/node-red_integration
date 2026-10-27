@@ -32,7 +32,6 @@
 		};
 		// Operation values from 0.1.x that saved flows hold, and the operation each one runs.
 		var ALIASES = {
-			createDataRequest: 'createSignatureRequest',
 			findTemplate: 'findTemplates',
 		};
 		// 0.1.x's findSubmission got one submission (with submission_id) or a list, so it has
@@ -224,11 +223,11 @@
 
 	<h3>Create Signature Request</h3>
 	<p>(<code>createSignatureRequest</code>)</p>
-	<p><code>msg.payload = { template_id, data?, version?, test?, metadata?, expires_in?, signature_requests: [ { email, fields: ["field", …], name?, role?, auth_type?, auth_provider?, prefilled_values_editable?, ignore_unknown_fields? } ], signing_link_type? }</code></p>
+	<p><code>msg.payload = { template_id, data?, version?, test?, metadata?, expires_in?, signature_requests: [ { name?, email?, role?, fields: ["field", …], auth_type?, auth_provider?, prefilled_values_editable?, ignore_unknown_fields? } ], signing_link_type? }</code></p>
 	<p>
-		Each signer needs an <code>email</code> and <code>fields</code>: the names of the fields they fill in (a
-		list, or text separated by commas). A signer without an email is left out, as in version 0.1, so an empty
-		row for an optional signer creates nothing. A field can only be in one signature request.
+		Each signer needs <code>fields</code>: the names of the fields they fill in (a list, or text separated by
+		commas). <code>email</code> is optional, for a signer who signs in your own page through an
+		<code>api</code> link. Every signer in the list is sent. A field can only be in one signature request.
 		<code>auth_type</code> is <code>email_link</code> (the default), <code>password</code>, <code>oauth</code>
 		(with <code>auth_provider</code>), <code>phone_number</code>, <code>ldap</code> or <code>saml</code>. A field
 		that <code>data</code> fills in needs <code>prefilled_values_editable</code>.
@@ -344,11 +343,11 @@
 
 	<h3>Flows from version 0.1</h3>
 	<p>
-		The operation values <code>createDataRequest</code>, <code>findTemplate</code> and
-		<code>findSubmission</code> still work, and so do the payload keys <code>data_requests</code>,
-		<code>data_request_id</code>, <code>token_type</code>, <code>type</code> (<code>live</code> or
-		<code>test</code>) and the <code>combined_submission</code> source type. <code>limit</code> is still how
-		many templates or submissions to return, and signers without an email are still left out. The output is API
+		The operation values <code>findTemplate</code> and <code>findSubmission</code> still work, and so do the
+		payload keys <code>token_type</code>, <code>type</code> (<code>live</code> or <code>test</code>) and the
+		<code>combined_submission</code> source type. <code>limit</code> is still how many templates or submissions
+		to return. Signature requests use only their own names: pick Create Signature Request again in a saved
+		node, and send <code>signature_requests</code> and <code>signature_request_id</code>. The output is API
 		v2's: for example, the PDF link is <code>files.pdf.download_url</code>, and Find Templates and Find
 		Submissions return <code>{ data, next_cursor }</code> instead of a list.
 	</p>

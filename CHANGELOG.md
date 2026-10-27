@@ -3,16 +3,19 @@
 ## 1.0.0
 
 A major version: the nodes now call DocSpring API v2, and each operation's output is API v2's. Flows saved with
-0.1.0 keep their operations and inputs; check the nodes that read the output (see "Upgrading from 0.1" in the
-README).
+0.1.0 keep most of their operations and inputs, but not the data request names (below); check the nodes that
+read the output (see "Upgrading from 0.1" in the README).
 
 - **API v2.** Every request goes to `/api/v2`. Self-hosted (Enterprise) servers need a DocSpring release with API
   v2: until yours has it, keep using 0.1.0. **Test connection** says so when the server doesn't have API v2.
-- **Signature requests.** Data requests are called signature requests: Create Signature Request takes
-  `signature_requests` and returns `signature_requests[].signing_url`, `first_signature_request_id` and
-  `first_signing_url`. Each signer needs `fields` (API v2 requires them), and can have a `role`,
-  `auth_provider`, `prefilled_values_editable` and `ignore_unknown_fields`. Signers without an email are left
-  out, as in 0.1.0. `signing_link_type` picks `email` links (7 days, the default), `api` links (24 hours) or none.
+- **Signature requests.** Data requests are now signature requests, and the old names no longer work: the
+  `createDataRequest` operation value, and the `data_requests` and `data_request_id` payload keys. Open saved
+  Create Signature Request nodes and pick the operation again, and send `signature_requests` and
+  `signature_request_id`. Create Signature Request returns `signature_requests[].signing_url`,
+  `first_signature_request_id` and `first_signing_url`. Each signer needs `fields` (API v2 requires them), and can
+  have a `role`, `auth_provider`, `prefilled_values_editable` and `ignore_unknown_fields`. `email` is optional, and
+  every signer is sent. `signing_link_type` picks `email` links (7 days, the default), `api` links (24 hours) or
+  none.
 - **Combined PDFs.** Combine PDFs calls `/combined_pdfs`; the `combined_submission` source type is `combined_pdf`.
 - **Outputs.** The PDF link is `files.pdf.download_url`. Find Templates and Find Submissions return
   `{ data, next_cursor }`: pass `next_cursor` back as `cursor` for the next items. Their `limit` is still how many
@@ -24,8 +27,8 @@ README).
   Add, Update and Remove Template Fields, Get Template Page Images, List Folders, Create Folder and Make an API
   Call.
 - **Renamed operations.** Find Template is Find Templates, and Find Submission is two operations: Get Submission
-  and Find Submissions. The 0.1.0 values `createDataRequest`, `findTemplate` and `findSubmission` still work,
-  and so do the payload keys `data_requests`, `data_request_id`, `token_type` and `type` (`live` or `test`).
+  and Find Submissions. The 0.1.0 values `findTemplate` and `findSubmission` still work, and so do the payload
+  keys `token_type` and `type` (`live` or `test`).
 - **Inputs.** `version` picks the template version (`latest` by default, `draft`, or a published version).
   `true`/`false` and numbers can be strings, and objects and lists JSON strings; a value that can't be converted is
   an error naming its key, and so is an ID that is `.` or `..`. `test` is only sent when it's true, so test API

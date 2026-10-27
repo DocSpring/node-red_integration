@@ -51,15 +51,17 @@ describe('DocSpring node editor', function () {
 		for (const operation of Object.keys(OPERATIONS)) {
 			help.should.containEql('<h3>' + OPERATION_LABELS[operation] + '</h3>\n\t<p>(<code>' + operation + '</code>)</p>');
 		}
-		for (const old of ['createDataRequest', 'findTemplate', 'findSubmission', 'data_requests', 'data_request_id', 'token_type', 'combined_submission']) {
+		for (const old of ['findTemplate', 'findSubmission', 'token_type', 'combined_submission']) {
 			help.should.containEql('<code>' + old + '</code>');
 		}
+		// Data requests are signature requests everywhere: the old names are gone.
+		help.should.not.match(/data[_ ]?requests?|createDataRequest/i);
 	});
 
 	it("labels nodes with the operation, saved 0.1.x values included", function () {
 		const def = loadDefinition(stubSelect());
 		def.label.call({ operation: 'combinePdfs' }).should.equal('DocSpring: Combine PDFs');
-		def.label.call({ operation: 'createDataRequest' }).should.equal('DocSpring: Create Signature Request');
+		def.label.call({ operation: 'createDataRequest' }).should.equal('DocSpring: createDataRequest');
 		def.label.call({ operation: 'findTemplate' }).should.equal('DocSpring: Find Templates');
 		def.label.call({ operation: 'findSubmission' }).should.equal('DocSpring: Find Submission');
 		def.label.call({ operation: 'apiCall', name: 'Mine' }).should.equal('Mine');

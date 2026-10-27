@@ -82,17 +82,26 @@ describe('DocSpring nodes', function () {
 		mock.last.url.toString().should.equal('https://sync.api.docspring.com/api/v2/templates/tpl_1/submissions?wait=true');
 	});
 
-	it('runs a saved 0.1.x createDataRequest node as Create Signature Request', async function () {
+	it('runs Create Signature Request, and treats the old createDataRequest as an unknown operation', async function () {
 		mock.respond(201, Object.assign({}, processed, { signature_requests: [{ id: 'srq_1', state: 'pending' }] }));
 		mock.respond(201, { id: 'tok_1', signature_request_url: 'https://app.docspring.com/sign/srq_1' });
-		const msg = await runNode('createDataRequest', {
-			payload: { template_id: 'tpl_1', data_requests: [{ email: 'jane@example.com', fields: 'signature' }] },
-		});
+		const payload = { template_id: 'tpl_1', signature_requests: [{ email: 'jane@example.com', fields: 'signature' }] };
+		const msg = await runNode('createSignatureRequest', { payload });
 		mock.calls[0].body.signature_requests.should.eql([
 			{ email: 'jane@example.com', fields: ['signature'], auth_type: 'email_link' },
 		]);
 		msg.payload.first_signature_request_id.should.equal('srq_1');
 		msg.payload.first_signing_url.should.equal('https://app.docspring.com/sign/srq_1');
+		await helper.unload();
+
+		const err = await new Promise((resolve) => {
+			helper.load([configNode, docspringNode], flow('createDataRequest'), creds, function () {
+				helper.getNode('n1').on('call:error', (call) => resolve(call.firstArg));
+				helper.getNode('n1').receive({ payload });
+			});
+		});
+		err.message.should.equal('Unknown DocSpring operation: createDataRequest');
+		mock.calls.length.should.equal(2);
 	});
 
 	it('takes the operation from msg.operation, old values included', async function () {

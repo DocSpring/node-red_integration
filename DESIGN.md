@@ -102,12 +102,9 @@ The payload of each operation is documented in the node's help (`nodes/docspring
   `template_version`.
 - Create Signature Request needs `fields` for every signer (v2 requires them), defaults `auth_type` to
   `email_link`, and makes an `email` signing link per signer unless `signing_link_type` is `api` or `none`.
-- Signer rows without an email (missing, empty or blank) are left out, under `signature_requests` and 0.1.x's
-  `data_requests` alike, in Create Signature Request and Check Data. 0.1.x did this, and flows rely on it: a blank
-  row for an optional signer would otherwise create a signature request nobody is sent, and the submission would
-  wait for it. v2 itself allows a signer without an email; such signers need Make an API Call. With no signer left,
-  Create Signature Request fails before calling the API. An error about a row names its place in the list the flow
-  sent.
+- Every `signature_requests` row is sent as given, in Create Signature Request and Check Data, including rows
+  without an email: v2 makes `email` optional, for signers who sign in the customer's own page through an `api`
+  link.
 
 ### Outputs
 
@@ -147,20 +144,22 @@ DocSpring's error code, or the failure state.
 ### Flows saved with 0.1.x
 
 Flows store only the `operation` value and the config node. Updates install by hand from the palette manager, which
-warns about a major version, and installs pin `~0.1.x`, so 1.0.0 is a deliberate upgrade. Old names still work:
+warns about a major version, and installs pin `~0.1.x`, so 1.0.0 is a deliberate upgrade. Some old names still
+work:
 
-- Operation values: `createDataRequest` → Create Signature Request, `findTemplate` → Find Templates,
-  `findSubmission` → Get Submission when the payload has `submission_id`, otherwise Find Submissions.
-  The editor shows the new operation when it opens an old node; a `findSubmission` node keeps its value (shown as
-  "Find Submission (Get Submission or Find Submissions)") until someone picks one.
-- Payload keys: `data_requests` → `signature_requests`, `data_request_id` → `signature_request_id`, `token_type`
-  → `type`, `type: "live" | "test"` → `test` (Find Submissions), source type `combined_submission` →
-  `combined_pdf`.
-- `limit` (Find Templates, Find Submissions) is still a total, and signer rows without an email are still left out
-  (see Inputs and Outputs above).
-- Outputs are v2's, not 0.1.x's: `download_url` is `files.pdf.download_url`, `data_requests` is
-  `signature_requests`, `first_data_request_id` is `first_signature_request_id`, and Find Templates / Find
-  Submissions return `{ data, next_cursor }` instead of an array.
+- Operation values: `findTemplate` → Find Templates, `findSubmission` → Get Submission when the payload has
+  `submission_id`, otherwise Find Submissions. The editor shows the new operation when it opens an old node; a
+  `findSubmission` node keeps its value (shown as "Find Submission (Get Submission or Find Submissions)") until
+  someone picks one.
+- Payload keys: `token_type` → `type`, `type: "live" | "test"` → `test` (Find Submissions), source type
+  `combined_submission` → `combined_pdf`.
+- `limit` (Find Templates, Find Submissions) is still a total (see Outputs above).
+- Signature requests have no aliases: 1.0.0 uses only signature request names (Nathan, 27 Oct 2026). 0.1.x's
+  operation value, signer list key and ID key for them get the normal errors (an unknown operation, no signers, a
+  missing `signature_request_id`), with nothing that names the old keys. The CHANGELOG's upgrade note lists them.
+- Outputs are v2's, not 0.1.x's: `download_url` is `files.pdf.download_url`, Create Signature Request returns
+  `signature_requests` and `first_signature_request_id`, and Find Templates / Find Submissions return
+  `{ data, next_cursor }` instead of an array.
 
 ## No trigger node (not planned)
 

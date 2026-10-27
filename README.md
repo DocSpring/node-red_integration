@@ -48,7 +48,7 @@ response is written back to `msg.payload`. Errors go to a **Catch** node, with D
 | **Expire Submission** (`expireSubmission`) | `{ submission_id }` | the expired submission |
 | **Combine PDFs** (`combinePdfs`) | `{ source_pdfs: [{ type, id \| url, template_version?, processed? }], metadata?, password?, expires_in?, wait? }` | the combined PDF |
 | **Get Combined PDF** (`getCombinedPdf`) | `{ combined_pdf_id }` | the combined PDF |
-| **Create Signature Request** (`createSignatureRequest`) | `{ template_id, data?, version?, test?, metadata?, signature_requests: [{ email, fields, name?, role?, auth_type?, auth_provider?, prefilled_values_editable?, ignore_unknown_fields? }], signing_link_type? }` | the submission, with a `signing_url` per signature request |
+| **Create Signature Request** (`createSignatureRequest`) | `{ template_id, data?, version?, test?, metadata?, signature_requests: [{ name?, email?, role?, fields, auth_type?, auth_provider?, prefilled_values_editable?, ignore_unknown_fields? }], signing_link_type? }` | the submission, with a `signing_url` per signature request |
 | **Create Signing Link** (`createSigningLink`) | `{ signature_request_id, type?: "email" \| "api" }` | the token; `signature_request_url` is the link |
 | **Get Signature Request** (`getSignatureRequest`) | `{ signature_request_id }` | the signature request |
 | **Find Templates** (`findTemplates`) | `{ query?, parent_folder_id?, limit?, cursor? }` | `{ data, next_cursor }` |
@@ -73,9 +73,8 @@ The node's help (in the editor's Help sidebar) explains each input. A few that a
 - `version` is a published template version such as `1.2.0`, `latest` (the default for making PDFs) or `draft`.
   Dates in `data` are `YYYY-MM-DD`.
 - Operations that make a PDF wait for it. `wait: false` returns the record straight away, still `pending`.
-- Each signer in a signature request needs an `email` and `fields` (the names of the fields they fill in). A signer
-  without an email is left out, as in 0.1, so an empty row for an optional signer creates nothing. Email signing
-  links last 7 days, API links 24 hours.
+- Each signer in a signature request needs `fields`: the names of the fields they fill in. `email` is optional, for
+  a signer who signs in your own page through an `api` link. Email signing links last 7 days, API links 24 hours.
 - When the account reaches DocSpring's API rate limit (a 429), the node waits as long as DocSpring asks (up to a
   minute) and tries again, up to 3 times; then the error code is `rate_limited`. Each page of a large `limit` is a
   request, and test API tokens have a lower limit.
@@ -98,20 +97,24 @@ An **inject** node with this payload, wired into a **DocSpring** node (Operation
 
 ## Upgrading from 0.1
 
-1.0 uses DocSpring API v2, so the output of each operation changes. Flows saved with 0.1 keep their operations and
-inputs:
+1.0 uses DocSpring API v2, so the output of each operation changes. Flows saved with 0.1 keep most of their
+operations and inputs:
 
-- `createDataRequest`, `findTemplate` and `findSubmission` still work, as operation values and in `msg.operation`.
-- The payload keys `data_requests`, `data_request_id` and `token_type`, `type: "live" | "test"` and the
-  `combined_submission` source type still work.
-- `limit` is still how many templates or submissions to return, of any size (the default is now 50, not 20), and
-  signers without an email are still left out.
+- `findTemplate` and `findSubmission` still work, as operation values and in `msg.operation`.
+- The payload keys `token_type`, `type: "live" | "test"` and the `combined_submission` source type still work.
+- `limit` is still how many templates or submissions to return, of any size (the default is now 50, not 20).
+
+Signature requests use only their own names now, so update the nodes that make them:
+
+- Open each saved Create Signature Request node and pick the operation again, and use `createSignatureRequest` in
+  `msg.operation`.
+- Send the signers as `signature_requests` (each with `fields`), and the ID as `signature_request_id`. Every signer
+  is sent, so leave out rows for signers you don't need.
 
 Check the nodes that read the output:
 
 - The PDF link is `files.pdf.download_url` (it was `download_url`).
-- Data requests are now called signature requests: `signature_requests` and `first_signature_request_id` (were
-  `data_requests` and `first_data_request_id`). Each signer needs `fields`.
+- Create Signature Request returns `signature_requests` and `first_signature_request_id`.
 - Find Templates and Find Submissions return `{ data, next_cursor }` instead of an array.
 - Create Signing Link returns the token: the link is `signature_request_url`.
 

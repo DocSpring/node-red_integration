@@ -96,13 +96,28 @@ describe('DocSpring operations', function () {
 
 	describe('operation aliases from 0.1.x', function () {
 		it('maps the old operation values to the new operations', function () {
-			resolveOperation('createDataRequest', {}).should.equal('createSignatureRequest');
 			resolveOperation('findTemplate', {}).should.equal('findTemplates');
 			resolveOperation('findSubmission', { submission_id: 'sub_1' }).should.equal('getSubmission');
 			resolveOperation('findSubmission', { limit: 5 }).should.equal('findSubmissions');
 			resolveOperation('generatePdf', {}).should.equal('generatePdf');
 			(resolveOperation('nope', {}) === null).should.be.true();
 			(resolveOperation('toString', {}) === null).should.be.true();
+		});
+
+		it('no longer takes the data request names, which are signature requests everywhere', async function () {
+			(resolveOperation('createDataRequest', {}) === null).should.be.true();
+			const signer = [{ email: 'jane@example.com', fields: 'signature' }];
+			await run('createSignatureRequest', { template_id: 'tpl_1', data_requests: signer }).should.be.rejectedWith(
+				/^signature_requests is required/,
+			);
+			await run('createSigningLink', { data_request_id: 'drq_1' }).should.be.rejectedWith('signature_request_id is required');
+			await run('getSignatureRequest', { data_request_id: 'drq_1' }).should.be.rejectedWith(
+				'signature_request_id is required',
+			);
+			mock.calls.length.should.equal(0);
+			mock.respond(200, { valid: true });
+			await run('checkData', { template_id: 'tpl_1', data: {}, data_requests: signer });
+			mock.last.body.should.eql({ data: {} });
 		});
 	});
 
@@ -139,9 +154,6 @@ describe('DocSpring operations', function () {
 					await run(operation, { [key]: value }).should.be.rejectedWith(expected);
 				}
 			}
-			await run('getSignatureRequest', { data_request_id: '..' }).should.be.rejectedWith(
-				'signature_request_id must be an ID, not ".."',
-			);
 			mock.calls.length.should.equal(0);
 		});
 
@@ -309,7 +321,7 @@ describe('DocSpring operations', function () {
 				version: 'latest',
 				data: { a: 1 },
 				test: true,
-				data_requests: [{ email: 'signer@example.com', fields: 'signature' }],
+				signature_requests: [{ email: 'signer@example.com', fields: 'signature' }],
 			});
 			result.should.eql(invalid);
 			mock.last.url.toString().should.equal(API + '/templates/tpl_1/submissions/validate?version=latest');
@@ -527,12 +539,12 @@ describe('DocSpring operations', function () {
 			result.should.not.have.property('first_data_request_id');
 		});
 
-		it("takes 0.1.x's data_requests key, and api or no signing links", async function () {
+		it('makes api signing links, or none', async function () {
 			const created = submission({ signature_requests: [signatureRequest('srq_1')] });
 			mock.respond(201, created).respond(201, token('srq_1', 'api')).respond(201, created);
 			await run('createSignatureRequest', {
 				template_id: 'tpl_1',
-				data_requests: [{ email: 'jane@example.com', fields: 'signature' }],
+				signature_requests: [{ email: 'jane@example.com', fields: 'signature' }],
 				signing_link_type: 'api',
 			});
 			mock.calls[0].body.signature_requests.should.eql([
@@ -550,40 +562,30 @@ describe('DocSpring operations', function () {
 			result.first_signature_request_id.should.equal('srq_1');
 		});
 
-		it('leaves out signers without an email, as 0.1.x did, under both keys', async function () {
-			const created = submission({ signature_requests: [signatureRequest('srq_1')] });
-			const rows = [
-				{ name: 'Jane', email: 'jane@example.com', fields: 'signature' },
-				{ name: '', email: '', fields: 'signature_2' },
-				{ name: 'No email', fields: 'signature_3' },
-				{ email: '  ', fields: 'signature_4' },
-				null,
+		it('sends every signer as given, one without an email too (for embedded signing)', async function () {
+			const created = submission({ signature_requests: [signatureRequest('srq_1'), signatureRequest('srq_2')] });
+			mock.respond(201, created).respond(201, token('srq_1', 'api')).respond(201, token('srq_2', 'api'));
+			await run('createSignatureRequest', {
+				template_id: 'tpl_1',
+				signature_requests: [
+					{ name: 'Jane', email: 'jane@example.com', fields: 'signature' },
+					{ name: 'Sam', fields: 'signature_2' },
+				],
+				signing_link_type: 'api',
+			});
+			const expected = [
+				{ name: 'Jane', email: 'jane@example.com', fields: ['signature'], auth_type: 'email_link' },
+				{ name: 'Sam', fields: ['signature_2'], auth_type: 'email_link' },
 			];
-			const expected = [{ name: 'Jane', email: 'jane@example.com', fields: ['signature'], auth_type: 'email_link' }];
-			for (const key of ['signature_requests', 'data_requests']) {
-				mock.respond(201, created).respond(201, token('srq_1', 'email'));
-				await run('createSignatureRequest', { template_id: 'tpl_1', [key]: rows });
-				mock.calls[mock.calls.length - 2].body.signature_requests.should.eql(expected);
-			}
+			mock.calls[0].body.signature_requests.should.eql(expected);
 
 			mock.respond(200, { valid: true });
-			await run('checkData', { template_id: 'tpl_1', data: {}, data_requests: rows });
-			mock.last.body.signature_requests.should.eql(expected);
-			mock.respond(200, { valid: true });
-			await run('checkData', { template_id: 'tpl_1', data: {}, signature_requests: [{ fields: 'a' }] });
-			mock.last.body.should.eql({ data: {} });
-		});
-
-		it('needs at least one signer with an email, and names rows by their place in the list', async function () {
-			await run('createSignatureRequest', {
+			await run('checkData', {
 				template_id: 'tpl_1',
-				signature_requests: [{ name: 'Jane', fields: 'signature' }],
-			}).should.be.rejectedWith('signature_requests needs at least one signer with an email: rows without one are left out');
-			await run('createSignatureRequest', {
-				template_id: 'tpl_1',
-				data_requests: [{ fields: 'a' }, { email: 'a@example.com' }],
-			}).should.be.rejectedWith(/^signature_requests\[1\]\.fields is required/);
-			mock.calls.length.should.equal(0);
+				data: {},
+				signature_requests: [{ name: 'Sam', email: '', fields: 'signature_2' }],
+			});
+			mock.last.body.signature_requests.should.eql([expected[1]]);
 		});
 
 		it("warns, and carries on, when a signing link can't be created", async function () {
@@ -604,7 +606,7 @@ describe('DocSpring operations', function () {
 			await run('createSignatureRequest', { template_id: 'tpl_1' }).should.be.rejectedWith(/signature_requests is required/);
 			await run('createSignatureRequest', {
 				template_id: 'tpl_1',
-				data_requests: [{ email: 'a@example.com' }],
+				signature_requests: [{ email: 'a@example.com' }],
 			}).should.be.rejectedWith(/signature_requests\[0\]\.fields is required/);
 			await run('createSignatureRequest', {
 				template_id: 'tpl_1',
@@ -624,23 +626,21 @@ describe('DocSpring operations', function () {
 			mock.last.body.should.eql({ type: 'api' });
 		});
 
-		it("takes 0.1.x's data_request_id and token_type, and makes email links by default", async function () {
-			mock.respond(201, token('drq_1', 'api')).respond(201, token('drq_1', 'email'));
-			await run('createSigningLink', { data_request_id: 'drq_1', token_type: 'api' });
-			mock.last.url.toString().should.equal(API + '/signature_requests/drq_1/tokens');
+		it("takes 0.1.x's token_type, and makes email links by default", async function () {
+			mock.respond(201, token('srq_1', 'api')).respond(201, token('srq_1', 'email'));
+			await run('createSigningLink', { signature_request_id: 'srq_1', token_type: 'api' });
+			mock.last.url.toString().should.equal(API + '/signature_requests/srq_1/tokens');
 			mock.last.body.should.eql({ type: 'api' });
-			await run('createSigningLink', { data_request_id: 'drq_1' });
+			await run('createSigningLink', { signature_request_id: 'srq_1' });
 			mock.last.body.should.eql({ type: 'email' });
 			await run('createSigningLink', {}).should.be.rejectedWith('signature_request_id is required');
 		});
 	});
 
-	it("Get Signature Request gets it, also by 0.1.x's data_request_id", async function () {
-		mock.respond(200, signatureRequest('srq_1')).respond(200, signatureRequest('drq_1'));
-		await run('getSignatureRequest', { signature_request_id: 'srq_1' });
+	it('Get Signature Request gets it', async function () {
+		mock.respond(200, signatureRequest('srq_1'));
+		(await run('getSignatureRequest', { signature_request_id: 'srq_1' })).should.eql(signatureRequest('srq_1'));
 		mock.last.url.toString().should.equal(API + '/signature_requests/srq_1');
-		await run('getSignatureRequest', { data_request_id: 'drq_1' });
-		mock.last.url.toString().should.equal(API + '/signature_requests/drq_1');
 	});
 
 	it('Find Templates returns the page, with query, folder, limit and cursor', async function () {
