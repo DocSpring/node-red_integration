@@ -2,6 +2,7 @@ module.exports = function (RED) {
 	'use strict';
 
 	const { docSpringRequest } = require('../lib/docspring');
+	const { resolveBaseUrl } = require('../lib/regions');
 
 	// The last version of this package that called API v1, for self-hosted servers without v2.
 	const LAST_V1_VERSION = '0.1.0';
@@ -22,6 +23,16 @@ module.exports = function (RED) {
 		},
 	});
 
+	// The API origin a region and host send requests to, for comparing two configs, or null
+	// when there isn't one (self-hosted without a host).
+	function apiBase(region, customHost) {
+		try {
+			return new URL(resolveBaseUrl(region, customHost)).href;
+		} catch (_e) {
+			return null;
+		}
+	}
+
 	// Admin endpoint for the "Test connection" button in the config editor.
 	// Calls GET /api/v2/authentication with the entered (or already-saved) credentials.
 	RED.httpAdmin.post(
@@ -32,11 +43,22 @@ module.exports = function (RED) {
 			const node = RED.nodes.getNode(req.params.id);
 			const saved = (node && node.credentials) || {};
 
-			// The editor sends __PWRD__ for a saved password it doesn't show.
 			const tokenId = body.tokenId || saved.tokenId;
-			const tokenSecret = body.tokenSecret && body.tokenSecret !== '__PWRD__' ? body.tokenSecret : saved.tokenSecret;
 			const region = body.region || (node && node.region) || 'us';
 			const customHost = body.customHost || (node && node.customHost) || '';
+
+			// The editor sends __PWRD__ for a saved secret it doesn't show. The saved secret only
+			// goes to the saved config's host: this endpoint needs only read permission, and the
+			// region and host come from the request.
+			let tokenSecret = body.tokenSecret && body.tokenSecret !== '__PWRD__' ? body.tokenSecret : undefined;
+			if (!tokenSecret && saved.tokenSecret) {
+				const savedBase = apiBase(node.region, node.customHost);
+				if (!savedBase || savedBase !== apiBase(region, customHost)) {
+					res.json({ ok: false, message: 'Type the Token Secret again to test a different region or host.' });
+					return;
+				}
+				tokenSecret = saved.tokenSecret;
+			}
 
 			if (!tokenId || !tokenSecret) {
 				res.json({ ok: false, message: 'Enter a Token ID and Token Secret first.' });

@@ -53,6 +53,36 @@ describe('DocSpring connection test', function () {
 		mock.last.headers.Authorization.should.equal('Basic ' + Buffer.from('api_saved:saved_secret').toString('base64'));
 	});
 
+	it('uses the saved secret only for the saved region and host', async function () {
+		const retype = { ok: false, message: 'Type the Token Secret again to test a different region or host.' };
+		const tries = [
+			[US_NODE, { region: 'self_hosted', customHost: 'collector.example', tokenId: 'api_saved', tokenSecret: '__PWRD__' }],
+			[US_NODE, { region: 'self_hosted', customHost: 'collector.example' }],
+			[US_NODE, { region: 'eu', tokenId: 'api_saved', tokenSecret: '__PWRD__' }],
+			[SELF_HOSTED_NODE, { region: 'self_hosted', customHost: 'collector.example', tokenSecret: '__PWRD__' }],
+			[SELF_HOSTED_NODE, { region: 'us', tokenSecret: '__PWRD__' }],
+		];
+		for (const [node, editorValues] of tries) {
+			(await testConnection({ node, credentials: CREDS }, editorValues)).should.eql(retype);
+			await helper.unload();
+		}
+		mock.calls.length.should.equal(0);
+	});
+
+	it('uses the saved secret for the saved host however it is written', async function () {
+		const savedAuth = 'Basic ' + Buffer.from('api_saved:saved_secret').toString('base64');
+		mock.respond(200, { authenticated: true }).respond(200, { authenticated: true });
+		const selfHosted = { region: 'self_hosted', customHost: ' HTTPS://DocSpring.example.com/ ', tokenSecret: '__PWRD__' };
+		(await testConnection({ node: SELF_HOSTED_NODE, credentials: CREDS }, selfHosted)).ok.should.be.true();
+		mock.last.url.toString().should.equal('https://docspring.example.com/api/v2/authentication');
+		mock.last.headers.Authorization.should.equal(savedAuth);
+		await helper.unload();
+		// The editor sends the hidden Host field's value with the US and EU regions too.
+		(await testConnection({ node: US_NODE, credentials: CREDS }, { region: 'us', customHost: 'old.example' })).ok.should.be.true();
+		mock.last.url.toString().should.equal('https://api.docspring.com/api/v2/authentication');
+		mock.last.headers.Authorization.should.equal(savedAuth);
+	});
+
 	it('says the token is invalid on a 401', async function () {
 		mock.respond(401, { error: { code: 'unauthorized', message: 'Invalid token', details: [], request_id: 'req_1' } });
 		const result = await testConnection({ node: US_NODE, credentials: CREDS }, {});

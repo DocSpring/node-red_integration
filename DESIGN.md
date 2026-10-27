@@ -34,8 +34,11 @@ No runtime dependencies: requests use the global `fetch` (Node 18+, which Node-R
 - **Test connection** (`POST /docspring-config/:id/test`, an admin endpoint): `GET /api/v2/authentication`, OK when
   the response has `authenticated: true`. A 401 says the token is invalid. A 404 from a self-hosted host says:
   "This DocSpring server doesn't have API v2 yet. Upgrade it to the latest release, or use version 0.1.0 of this
-  integration." The editor sends `__PWRD__` for a saved secret it doesn't show; the endpoint uses the saved secret
-  then.
+  integration." The editor sends `__PWRD__` for a saved secret it doesn't show. The endpoint then uses the saved
+  secret, but only when the request's region and host resolve to the saved config's API host (compared as
+  normalised URLs); otherwise it answers "Type the Token Secret again to test a different region or host." without
+  calling anything. The endpoint needs only `docspring-config.read`, and the region and host come from the request,
+  so without that check anyone who can read the config could send the saved secret to a host of their choosing.
 
 ## Action node — `docspring`
 

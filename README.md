@@ -23,7 +23,8 @@ Add a **DocSpring** configuration (on the node, or via the config-nodes list):
 choose your **Region** (US / EU / Self-hosted), and paste the **Token ID** and
 **Token Secret** from the DocSpring web app (**Settings → API Tokens**). Click
 **Test connection** to confirm it works. Credentials are stored encrypted by
-Node-RED and never leave your instance.
+Node-RED and never leave your instance. **Test connection** uses a saved Token Secret only with the saved region and
+host: to test a different one, type the Token Secret again.
 
 Self-hosted (Enterprise) servers need a DocSpring release with API v2. If **Test connection** says your server
 doesn't have API v2 yet, upgrade it, or keep using version 0.1.0 of these nodes until you do.

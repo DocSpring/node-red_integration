@@ -33,7 +33,8 @@ README).
 - **Errors.** Errors show DocSpring's error code, message, the details, the record's ID and the request ID, and a
   Catch node gets the code in `msg.error.code`. A PDF that couldn't be generated (a failure `state`) is an error
   too, and so is one that wasn't ready in time, which names the operation to get it later with.
-- **Test connection** works with a saved Token Secret (it sent a placeholder before).
+- **Test connection** works with a saved Token Secret (it sent a placeholder before), and uses it only with the
+  saved region and host. To test a different region or host, type the Token Secret again.
 - Each request sends `User-Agent: docspring-node-red/1.0.0`.
 
 ## 0.1.0
