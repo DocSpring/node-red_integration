@@ -28,8 +28,9 @@ describe('DocSpring connection test', function () {
 		mock.restore();
 		helper.stopServer(done);
 	});
-	afterEach(function () {
-		helper.unload();
+	// Waits for the flows to stop, so the next test's load can't overlap them.
+	afterEach(async function () {
+		await helper.unload();
 		mock.assertDone();
 		mock.reset();
 	});
