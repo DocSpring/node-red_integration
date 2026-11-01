@@ -1,5 +1,20 @@
 # Changelog
 
+## 1.1.0 (unreleased)
+
+Needs the DocSpring release in which DocSpring emails signers (sc-2878); until it's live, API v2 refuses `send_email`,
+so every Create Signature Request would fail.
+
+- **DocSpring emails the signers.** Create Signature Request sends `send_email` (true by default, as in the API):
+  DocSpring emails each signer a link to sign, with any reminders and the signed PDF once everyone has signed. It
+  takes the API's email options (`email_subject`, `email_message`, `cc`, `reminders`, `reply_to`,
+  `notification_emails`, `notify_when_signed`) and makes a signing link only for the signers DocSpring doesn't email.
+  To keep sending the links yourself, as in 1.0.0, set `send_email` to false (on the payload, or on a signer).
+- `signing_order` and each signer's `signing_step`.
+- **Check Data** takes the same settings with its signers.
+- Text of only spaces counts as empty, as `''` does, so it's left out: API v2 refuses blank text (a search query, a
+  signer's name or email).
+
 ## 1.0.0
 
 A major version: the nodes now call DocSpring API v2, and each operation's output is API v2's. Flows saved with

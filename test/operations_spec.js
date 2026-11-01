@@ -32,7 +32,10 @@ function submission(extra) {
 }
 
 function signatureRequest(id, extra) {
-	return Object.assign({ id, submission_id: 'sub_1', state: 'pending', role: 'Signer 1', fields: ['signature'] }, extra);
+	return Object.assign(
+		{ id, submission_id: 'sub_1', state: 'pending', role: 'Signer 1', fields: ['signature'], send_email: false },
+		extra,
+	);
 }
 
 function token(signatureRequestId, type) {
@@ -331,6 +334,25 @@ describe('DocSpring operations', function () {
 				signature_requests: [{ email: 'signer@example.com', fields: ['signature'], auth_type: 'email_link' }],
 			});
 		});
+
+		it('checks the email settings Create Signature Request takes, as given', async function () {
+			mock.respond(200, { valid: true });
+			await run('checkData', {
+				template_id: 'tpl_1',
+				data: {},
+				signing_order: 'sequential',
+				email_subject: 'Please sign',
+				reminders: { interval_days: 3, max_count: 2 },
+				signature_requests: [{ email: 'signer@example.com', fields: 'signature', signing_step: 1 }],
+			});
+			mock.last.body.should.eql({
+				data: {},
+				signature_requests: [{ email: 'signer@example.com', fields: ['signature'], auth_type: 'email_link', signing_step: 1 }],
+				signing_order: 'sequential',
+				email_subject: 'Please sign',
+				reminders: { interval_days: 3, max_count: 2 },
+			});
+		});
 	});
 
 	it('Get Submission gets one submission', async function () {
@@ -474,7 +496,7 @@ describe('DocSpring operations', function () {
 	});
 
 	describe('Create Signature Request', function () {
-		it('creates the submission on the standard host, then an email signing link per signature request', async function () {
+		it('creates the submission on the standard host, then, when you send the links, an email signing link per signature request', async function () {
 			const created = submission({
 				state: 'waiting_for_signature_requests',
 				signature_requests: [signatureRequest('srq_1'), signatureRequest('srq_2', { role: 'Signer 2' })],
@@ -487,6 +509,7 @@ describe('DocSpring operations', function () {
 				test: false,
 				metadata: { a: 1 },
 				expires_in: 600,
+				send_email: false,
 				signature_requests: [
 					{ name: 'Jane', email: 'jane@example.com', fields: ['signature', 'first_name'], prefilled_values_editable: true },
 					{
@@ -524,6 +547,7 @@ describe('DocSpring operations', function () {
 						ignore_unknown_fields: true,
 					},
 				],
+				send_email: false,
 			});
 			link1.url.toString().should.equal(API + '/signature_requests/srq_1/tokens');
 			link1.body.should.eql({ type: 'email' });
@@ -544,6 +568,7 @@ describe('DocSpring operations', function () {
 			mock.respond(201, created).respond(201, token('srq_1', 'api')).respond(201, created);
 			await run('createSignatureRequest', {
 				template_id: 'tpl_1',
+				send_email: false,
 				signature_requests: [{ email: 'jane@example.com', fields: 'signature' }],
 				signing_link_type: 'api',
 			});
@@ -554,6 +579,7 @@ describe('DocSpring operations', function () {
 
 			const result = await run('createSignatureRequest', {
 				template_id: 'tpl_1',
+				send_email: false,
 				signature_requests: [{ email: 'jane@example.com', fields: 'signature' }],
 				signing_link_type: 'none',
 			});
@@ -567,9 +593,10 @@ describe('DocSpring operations', function () {
 			mock.respond(201, created).respond(201, token('srq_1', 'api')).respond(201, token('srq_2', 'api'));
 			await run('createSignatureRequest', {
 				template_id: 'tpl_1',
+				send_email: 'false',
 				signature_requests: [
 					{ name: 'Jane', email: 'jane@example.com', fields: 'signature' },
-					{ name: 'Sam', fields: 'signature_2' },
+					{ name: 'Sam', email: '  ', fields: 'signature_2' },
 				],
 				signing_link_type: 'api',
 			});
@@ -583,9 +610,11 @@ describe('DocSpring operations', function () {
 			await run('checkData', {
 				template_id: 'tpl_1',
 				data: {},
+				send_email: false,
 				signature_requests: [{ name: 'Sam', email: '', fields: 'signature_2' }],
 			});
 			mock.last.body.signature_requests.should.eql([expected[1]]);
+			mock.last.body.send_email.should.be.false();
 		});
 
 		it("warns, and carries on, when a signing link can't be created", async function () {
@@ -594,12 +623,106 @@ describe('DocSpring operations', function () {
 			const warnings = [];
 			const result = await run(
 				'createSignatureRequest',
-				{ template_id: 'tpl_1', signature_requests: [{ email: 'a@example.com', fields: ['signature'] }] },
+				{ template_id: 'tpl_1', send_email: false, signature_requests: [{ email: 'a@example.com', fields: ['signature'] }] },
 				{ warn: (m) => warnings.push(m) },
 			);
 			(result.signature_requests[0].signing_url === null).should.be.true();
 			warnings.length.should.equal(1);
 			warnings[0].should.startWith("Couldn't create a signing link for signature request srq_1: DocSpring API error 403 forbidden");
+		});
+
+		it('lets DocSpring email the signers by default, and makes no signing links', async function () {
+			const emailed = { send_email: true, sent_at: '2026-11-02T00:00:00Z', email_status: 'sent' };
+			mock.respond(201, submission({ signature_requests: [signatureRequest('srq_1', emailed)] }));
+			const result = await run('createSignatureRequest', {
+				template_id: 'tpl_1',
+				signature_requests: [{ email: 'jane@example.com', fields: 'signature' }],
+			});
+			mock.calls.length.should.equal(1);
+			mock.last.body.should.eql({
+				signature_requests: [{ email: 'jane@example.com', fields: ['signature'], auth_type: 'email_link' }],
+				send_email: true,
+			});
+			(result.signature_requests[0].signing_url === null).should.be.true();
+			result.signature_requests[0].email_status.should.equal('sent');
+			result.first_signature_request_id.should.equal('srq_1');
+			(result.first_signing_url === null).should.be.true();
+		});
+
+		it("sends the signing order, each signer's step and DocSpring's email options, leaving out empty ones", async function () {
+			mock.respond(201, submission({ signature_requests: [] }));
+			await run('createSignatureRequest', {
+				template_id: 'tpl_1',
+				send_email: 'true',
+				signing_order: 'sequential',
+				email_subject: 'Please sign {{ document.name }}',
+				email_message: '   ',
+				cc: 'records@example.com, legal@example.com',
+				reminders: '{"interval_days": "3", "max_count": 2}',
+				reply_to: '',
+				notification_emails: ['ops@example.com'],
+				notify_when_signed: 'true',
+				signature_requests: [
+					{ email: 'jane@example.com', fields: 'signature', signing_step: '1' },
+					{ email: 'sam@example.com', fields: 'signature_2', signing_step: 2 },
+				],
+			});
+			mock.last.body.should.eql({
+				signature_requests: [
+					{ email: 'jane@example.com', fields: ['signature'], auth_type: 'email_link', signing_step: 1 },
+					{ email: 'sam@example.com', fields: ['signature_2'], auth_type: 'email_link', signing_step: 2 },
+				],
+				send_email: true,
+				signing_order: 'sequential',
+				email_subject: 'Please sign {{ document.name }}',
+				cc: ['records@example.com', 'legal@example.com'],
+				reminders: { interval_days: 3, max_count: 2 },
+				notification_emails: ['ops@example.com'],
+				notify_when_signed: true,
+			});
+		});
+
+		it("makes a link only for the signers DocSpring doesn't email", async function () {
+			const created = submission({
+				signature_requests: [
+					signatureRequest('srq_1', { send_email: true }),
+					signatureRequest('srq_2', { auth_type: 'password' }),
+				],
+			});
+			mock.respond(201, created).respond(201, token('srq_2', 'api'));
+			const result = await run('createSignatureRequest', {
+				template_id: 'tpl_1',
+				signing_link_type: 'api',
+				signature_requests: [
+					{ email: 'jane@example.com', fields: 'signature' },
+					{ fields: 'signature_2', auth_type: 'password', send_email: false },
+				],
+			});
+			mock.calls.length.should.equal(2);
+			mock.calls[0].body.signature_requests[1].should.eql({
+				fields: ['signature_2'],
+				auth_type: 'password',
+				send_email: false,
+			});
+			mock.calls[1].url.toString().should.equal(API + '/signature_requests/srq_2/tokens');
+			(result.signature_requests[0].signing_url === null).should.be.true();
+			result.signature_requests[1].signing_url.should.equal(token('srq_2').signature_request_url);
+			(result.first_signing_url === null).should.be.true();
+		});
+
+		it('refuses email settings it can\'t convert before sending anything', async function () {
+			const signers = [{ email: 'jane@example.com', fields: 'signature' }];
+			await run('createSignatureRequest', { template_id: 'tpl_1', send_email: 'yes', signature_requests: signers }).should.be.rejectedWith(
+				'send_email must be true or false',
+			);
+			await run('createSignatureRequest', { template_id: 'tpl_1', reminders: 3, signature_requests: signers }).should.be.rejectedWith(
+				/reminders must be an object/,
+			);
+			await run('checkData', {
+				template_id: 'tpl_1',
+				signature_requests: [{ fields: 'signature', signing_step: 'first' }],
+			}).should.be.rejectedWith('signature_requests[0].signing_step must be a whole number');
+			mock.calls.length.should.equal(0);
 		});
 
 		it('needs signers, each with fields, before sending anything', async function () {
@@ -648,6 +771,12 @@ describe('DocSpring operations', function () {
 		mock.respond(200, page);
 		(await run('findTemplates', { query: 'Demo', parent_folder_id: 'fld_1', limit: 5, cursor: 'tpl_0' })).should.eql(page);
 		mock.last.url.toString().should.equal(API + '/templates?query=Demo&parent_folder_id=fld_1&limit=5&cursor=tpl_0');
+	});
+
+	it('Find Templates leaves out a query of only spaces, which the API refuses', async function () {
+		mock.respond(200, { data: [], next_cursor: null });
+		await run('findTemplates', { query: '   ' });
+		mock.last.url.toString().should.equal(API + '/templates');
 	});
 
 	it("Find Templates gets pages until it has limit templates, as 0.1.x's limit did", async function () {

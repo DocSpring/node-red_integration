@@ -41,14 +41,14 @@ response is written back to `msg.payload`. Errors go to a **Catch** node, with D
 | **Generate PDF** (`generatePdf`) | `{ template_id, data: {…}, version?, test?, metadata?, output_formats?, password?, expires_in?, field_overrides?, editable?, wait? }` | the submission; `files.pdf.download_url` is the PDF |
 | **Generate PDFs in a Batch** (`createSubmissionBatch`) | `{ template_id?, template_version?, test?, metadata?, output_formats?, submissions: [{ data, metadata?, field_overrides?, … }], wait? }` | the batch |
 | **Get Submission Batch** (`getSubmissionBatch`) | `{ submission_batch_id, include_data? }` | the batch |
-| **Check Data** (`checkData`) | `{ template_id, data, version?, test?, signature_requests? }` | `{ valid, error? }` |
+| **Check Data** (`checkData`) | `{ template_id, data, version?, test?, signature_requests?, send_email?, signing_order?, email_subject?, … }` | `{ valid, error? }` |
 | **Get Submission** (`getSubmission`) | `{ submission_id }` | the submission |
 | **Find Submissions** (`findSubmissions`) | `{ template_id?, test?, created_after?, created_before?, include_data?, limit?, cursor? }` | `{ data, next_cursor }` |
 | **Generate Submission Files** (`generateSubmissionFiles`) | `{ submission_id, formats?: ["png"], wait? }` | the submission, with `files.png` |
 | **Expire Submission** (`expireSubmission`) | `{ submission_id }` | the expired submission |
 | **Combine PDFs** (`combinePdfs`) | `{ source_pdfs: [{ type, id \| url, template_version?, processed? }], metadata?, password?, expires_in?, wait? }` | the combined PDF |
 | **Get Combined PDF** (`getCombinedPdf`) | `{ combined_pdf_id }` | the combined PDF |
-| **Create Signature Request** (`createSignatureRequest`) | `{ template_id, data?, version?, test?, metadata?, signature_requests: [{ name?, email?, role?, fields, auth_type?, auth_provider?, prefilled_values_editable?, ignore_unknown_fields? }], signing_link_type? }` | the submission, with a `signing_url` per signature request |
+| **Create Signature Request** (`createSignatureRequest`) | `{ template_id, data?, version?, test?, metadata?, signature_requests: [{ name?, email?, role?, fields, auth_type?, auth_provider?, send_email?, signing_step?, prefilled_values_editable?, ignore_unknown_fields? }], send_email?, signing_order?, email_subject?, email_message?, cc?, reminders?, reply_to?, notification_emails?, notify_when_signed?, signing_link_type? }` | the submission, with a `signing_url` per signature request you send the link for |
 | **Create Signing Link** (`createSigningLink`) | `{ signature_request_id, type?: "email" \| "api" }` | the token; `signature_request_url` is the link |
 | **Get Signature Request** (`getSignatureRequest`) | `{ signature_request_id }` | the signature request |
 | **Find Templates** (`findTemplates`) | `{ query?, parent_folder_id?, limit?, cursor? }` | `{ data, next_cursor }` |
@@ -73,8 +73,14 @@ The node's help (in the editor's Help sidebar) explains each input. A few that a
 - `version` is a published template version such as `1.2.0`, `latest` (the default for making PDFs) or `draft`.
   Dates in `data` are `YYYY-MM-DD`.
 - Operations that make a PDF wait for it. `wait: false` returns the record straight away, still `pending`.
-- Each signer in a signature request needs `fields`: the names of the fields they fill in. `email` is optional, for
-  a signer who signs in your own page through an `api` link. Email signing links last 7 days, API links 24 hours.
+- Each signer in a signature request needs `fields`: the names of the fields they fill in.
+- DocSpring emails each signer their link (`send_email` is true by default), with any reminders and the signed PDF
+  once everyone has signed; each signer then needs an `email`. Set `email_subject`, `email_message`, `cc`,
+  `reminders` (`{ interval_days, max_count }`), `reply_to`, `notification_emails` and `notify_when_signed` as in the
+  [API](https://docspring.com/docs/api-guide/create-signature-requests/). Set `send_email` to false to send the links
+  yourself, or on a signer to send only theirs: those signers get a `signing_url`, and `email` is optional for one who
+  signs in your own page through an `api` link. Email signing links last 7 days, API links 24 hours.
+- `signing_order: "sequential"` has people sign one step at a time, by their `signing_step` or the order of the list.
 - When the account reaches DocSpring's API rate limit (a 429), the node waits as long as DocSpring asks (up to a
   minute) and tries again, up to 3 times; then the error code is `rate_limited`. Each page of a large `limit` is a
   request, and test API tokens have a lower limit.
