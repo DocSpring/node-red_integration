@@ -38,13 +38,13 @@ response is written back to `msg.payload`. Errors go to a **Catch** node, with D
 
 | Operation | `msg.payload` in | out |
 |---|---|---|
-| **Generate PDF** (`generatePdf`) | `{ template_id, data: {…}, version?, test?, metadata?, output_formats?, password?, expires_in?, field_overrides?, editable?, wait? }` | the submission; `files.pdf.download_url` is the PDF |
+| **Generate PDF** (`generatePdf`) | `{ template_id, data: {…}, version?, test?, metadata?, output_formats?, password?, expires_in?, field_overrides?, editable?, wait? }` | the submission; `files.pdf.download_url` is the PDF, and a Word template's `docx` and `odt` output formats add `files.docx` and `files.odt` |
 | **Generate PDFs in a Batch** (`createSubmissionBatch`) | `{ template_id?, template_version?, test?, metadata?, output_formats?, submissions: [{ data, metadata?, field_overrides?, … }], wait? }` | the batch |
 | **Get Submission Batch** (`getSubmissionBatch`) | `{ submission_batch_id, include_data? }` | the batch |
 | **Check Data** (`checkData`) | `{ template_id, data, version?, test?, signature_requests?, send_email?, signing_order?, email_subject?, … }` | `{ valid, error? }` |
 | **Get Submission** (`getSubmission`) | `{ submission_id }` | the submission |
 | **Find Submissions** (`findSubmissions`) | `{ template_id?, test?, created_after?, created_before?, include_data?, limit?, cursor? }` | `{ data, next_cursor }` |
-| **Generate Submission Files** (`generateSubmissionFiles`) | `{ submission_id, formats?: ["png"], wait? }` | the submission, with `files.png` |
+| **Generate Submission Files** (`generateSubmissionFiles`) | `{ submission_id, formats?: ["png"], wait? }` (`png`, or `pdf`, `docx` and `odt` for a Word template's submission) | the submission, with the new files in `files` |
 | **Expire Submission** (`expireSubmission`) | `{ submission_id }` | the expired submission |
 | **Combine PDFs** (`combinePdfs`) | `{ source_pdfs: [{ type, id \| url, template_version?, processed? }], metadata?, password?, expires_in?, wait? }` | the combined PDF |
 | **Get Combined PDF** (`getCombinedPdf`) | `{ combined_pdf_id }` | the combined PDF |

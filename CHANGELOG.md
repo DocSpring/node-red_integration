@@ -12,6 +12,8 @@ so every Create Signature Request would fail.
   To keep sending the links yourself, as in 1.0.0, set `send_email` to false (on the payload, or on a signer).
 - `signing_order` and each signer's `signing_step`.
 - **Check Data** takes the same settings with its signers.
+- The help for Generate PDF, batches and Generate Submission Files lists a Word template's `docx` and `odt` formats
+  (the nodes already passed them on), and `files.docx` and `files.odt`.
 - Text of only spaces counts as empty, as `''` does, so it's left out: API v2 refuses blank text (a search query, a
   signer's name or email).
 

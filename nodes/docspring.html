@@ -154,11 +154,14 @@
 
 	<h3>Generate PDF</h3>
 	<p>(<code>generatePdf</code>)</p>
-	<p><code>msg.payload = { template_id, data: { field: value, … }, version?, test?, metadata?, output_formats?: ["pdf", "png"], password?, expires_in?, field_overrides?, editable?, wait? }</code></p>
+	<p><code>msg.payload = { template_id, data: { field: value, … }, version?, test?, metadata?, output_formats?: ["pdf", "docx", "odt", "png"], password?, expires_in?, field_overrides?, editable?, wait? }</code></p>
 	<p>
 		Returns the submission. <code>files.pdf.download_url</code> is a link to the PDF, and
-		<code>files.pdf.permanent_url</code> one that doesn't expire. <code>expires_in</code> is in seconds;
-		<code>png</code> in <code>output_formats</code> adds an image of each page (<code>files.png</code>).
+		<code>files.pdf.permanent_url</code> one that doesn't expire. <code>expires_in</code> is in seconds.
+		<code>output_formats</code> chooses what to make: for a Word template, <code>docx</code> adds its Word
+		document (<code>files.docx</code>) and <code>odt</code> an OpenDocument file (<code>files.odt</code>);
+		<code>png</code> adds an image of each page of the PDF (<code>files.png</code>). Left out, the submission
+		makes what the template makes.
 	</p>
 
 	<h3>Generate PDFs in a Batch</h3>
@@ -200,7 +203,11 @@
 	<h3>Generate Submission Files</h3>
 	<p>(<code>generateSubmissionFiles</code>)</p>
 	<p><code>msg.payload = { submission_id, formats?: ["png"], wait? }</code></p>
-	<p>Adds an image of each page to a processed submission. Returns the submission, with <code>files.png</code>.</p>
+	<p>
+		Adds files to a processed submission: <code>png</code> (the default) an image of each page of its PDF, and
+		for a Word template's submission <code>pdf</code>, <code>docx</code> (its Word document) or <code>odt</code>
+		(an OpenDocument file). Returns the submission, with the new files in <code>files</code>.
+	</p>
 
 	<h3>Expire Submission</h3>
 	<p>(<code>expireSubmission</code>)</p>
