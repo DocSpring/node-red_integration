@@ -158,18 +158,19 @@
 	<p>
 		Returns the submission. <code>files.pdf.download_url</code> is a link to the PDF, and
 		<code>files.pdf.permanent_url</code> one that doesn't expire. <code>expires_in</code> is in seconds.
-		<code>output_formats</code> chooses what to make: for a Word template, <code>docx</code> adds its Word
-		document (<code>files.docx</code>) and <code>odt</code> an OpenDocument file (<code>files.odt</code>);
-		<code>png</code> adds an image of each page of the PDF (<code>files.png</code>). Left out, the submission
-		makes what the template makes.
+		<code>output_formats</code> lists what to make: <code>pdf</code>, and for a Word template its Word document
+		(<code>docx</code>, <code>files.docx</code>) or an OpenDocument file (<code>odt</code>,
+		<code>files.odt</code>), without the PDF unless you list it too. <code>png</code> adds an image of each page
+		of the PDF (<code>files.png</code>), with the PDF. Left out, the submission makes what the template makes. A
+		submission with a <code>password</code> can't make <code>docx</code> or <code>odt</code>.
 	</p>
 
 	<h3>Generate PDFs in a Batch</h3>
 	<p>(<code>createSubmissionBatch</code>)</p>
-	<p><code>msg.payload = { template_id?, template_version?, test?, metadata?, output_formats?, submissions: [ { data, metadata?, field_overrides?, template_id?, template_version?, test?, editable?, password?, expires_in?, output_formats? } ], wait? }</code></p>
+	<p><code>msg.payload = { template_id?, template_version?, test?, metadata?, output_formats?: ["pdf", "docx", "odt", "png"], submissions: [ { data, metadata?, field_overrides?, template_id?, template_version?, test?, editable?, password?, expires_in?, output_formats? } ], wait? }</code></p>
 	<p>
-		Up to 50 submissions. Each one uses the batch's <code>template_id</code> unless it names its own. Returns
-		the batch, with its submissions.
+		Up to 50 submissions. Each one uses the batch's <code>template_id</code> and <code>output_formats</code>
+		unless it sets its own; the formats are as in Generate PDF. Returns the batch, with its submissions.
 	</p>
 
 	<h3>Get Submission Batch</h3>
@@ -244,7 +245,7 @@
 		<code>email_link</code> auth type. You can set <code>email_subject</code>, <code>email_message</code>,
 		<code>cc</code> (up to 10 people who get the signed PDF), <code>reminders</code> (every 1 to 30 days, up to
 		10 times), <code>reply_to</code>, <code>notification_emails</code> and <code>notify_when_signed</code>. A
-		test submission only emails members of your DocSpring team. Set <code>send_email</code> to false to send the
+		test submission can only email members of your DocSpring team: other addresses are refused. Set <code>send_email</code> to false to send the
 		links yourself, or for people who sign in your own page through an <code>api</code> link (their
 		<code>email</code> is optional), and on a signer to send only theirs. DocSpring doesn't email the signers
 		of a form library template: set it to false for one.
@@ -252,8 +253,9 @@
 	<p>
 		<code>signing_order</code>: <code>parallel</code> (the default, everyone at once) or
 		<code>sequential</code>: people sign in the order of their <code>signing_step</code> (set it for every
-		signer or for none), or of the list. DocSpring emails each step when the one before it is done; when you
-		send the links, send each step's once the step before it has signed.
+		signer or for none), or of the list. DocSpring emails each step when the one before it is done. When you
+		send the links, send each step's once the step before it has signed, and make a new one with Create Signing
+		Link if it has expired (<code>email</code> links last 7 days, <code>api</code> links 24 hours).
 	</p>
 	<p>
 		Returns the submission, waiting for its signature requests. Each signature request that DocSpring doesn't

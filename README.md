@@ -39,7 +39,7 @@ response is written back to `msg.payload`. Errors go to a **Catch** node, with D
 | Operation | `msg.payload` in | out |
 |---|---|---|
 | **Generate PDF** (`generatePdf`) | `{ template_id, data: {…}, version?, test?, metadata?, output_formats?, password?, expires_in?, field_overrides?, editable?, wait? }` | the submission; `files.pdf.download_url` is the PDF, and a Word template's `docx` and `odt` output formats add `files.docx` and `files.odt` |
-| **Generate PDFs in a Batch** (`createSubmissionBatch`) | `{ template_id?, template_version?, test?, metadata?, output_formats?, submissions: [{ data, metadata?, field_overrides?, … }], wait? }` | the batch |
+| **Generate PDFs in a Batch** (`createSubmissionBatch`) | `{ template_id?, template_version?, test?, metadata?, output_formats?, submissions: [{ data, metadata?, field_overrides?, … }], wait? }` | the batch; `output_formats` as in Generate PDF, including a Word template's `docx` and `odt` |
 | **Get Submission Batch** (`getSubmissionBatch`) | `{ submission_batch_id, include_data? }` | the batch |
 | **Check Data** (`checkData`) | `{ template_id, data, version?, test?, signature_requests?, send_email?, signing_order?, email_subject?, … }` | `{ valid, error? }` |
 | **Get Submission** (`getSubmission`) | `{ submission_id }` | the submission |

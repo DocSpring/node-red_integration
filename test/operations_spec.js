@@ -200,6 +200,12 @@ describe('DocSpring operations', function () {
 			});
 		});
 
+		it('sends a password as given, spaces and all', async function () {
+			mock.respond(201, submission());
+			await run('generatePdf', { template_id: 'tpl_1', data: {}, password: '  ' });
+			mock.last.body.should.eql({ data: {}, password: '  ' });
+		});
+
 		it("leaves test out unless it's true, and empty values out", async function () {
 			mock.respond(201, submission()).respond(201, submission());
 			await run('generatePdf', { template_id: 'tpl_1', data: {}, test: false, password: '', metadata: null });
@@ -657,13 +663,13 @@ describe('DocSpring operations', function () {
 				signing_order: 'sequential',
 				email_subject: 'Please sign {{ document.name }}',
 				email_message: '   ',
-				cc: 'records@example.com, legal@example.com',
+				cc: 'records@example.com, legal@example.com, records@example.com',
 				reminders: '{"interval_days": "3", "max_count": 2}',
-				reply_to: '',
-				notification_emails: ['ops@example.com'],
+				reply_to: ' records@example.com ',
+				notification_emails: ['ops@example.com', 'ops@example.com'],
 				notify_when_signed: 'true',
 				signature_requests: [
-					{ email: 'jane@example.com', fields: 'signature', signing_step: '1' },
+					{ email: ' jane@example.com ', fields: 'signature', signing_step: '1' },
 					{ email: 'sam@example.com', fields: 'signature_2', signing_step: 2 },
 				],
 			});
@@ -677,9 +683,27 @@ describe('DocSpring operations', function () {
 				email_subject: 'Please sign {{ document.name }}',
 				cc: ['records@example.com', 'legal@example.com'],
 				reminders: { interval_days: 3, max_count: 2 },
+				reply_to: 'records@example.com',
 				notification_emails: ['ops@example.com'],
 				notify_when_signed: true,
 			});
+		});
+
+		it('leaves out reminders whose values are all empty, and sends the rest for the API to name what is missing', async function () {
+			const signers = [{ email: 'jane@example.com', fields: 'signature' }];
+			mock.respond(201, submission({ signature_requests: [] })).respond(201, submission({ signature_requests: [] }));
+			await run('createSignatureRequest', {
+				template_id: 'tpl_1',
+				reminders: { interval_days: '', max_count: ' ' },
+				signature_requests: signers,
+			});
+			mock.last.body.should.not.have.property('reminders');
+			await run('createSignatureRequest', {
+				template_id: 'tpl_1',
+				reminders: { intervalDays: 3 },
+				signature_requests: signers,
+			});
+			mock.last.body.reminders.should.eql({});
 		});
 
 		it("makes a link only for the signers DocSpring doesn't email", async function () {
