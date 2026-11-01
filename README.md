@@ -1,7 +1,7 @@
 # @docspring/node-red-docspring
 
-[Node-RED](https://nodered.org) nodes for [DocSpring](https://docspring.com) — turn
-structured data into filled, downloadable, and **signable** PDFs from your flows.
+[Node-RED](https://nodered.org) nodes for [DocSpring](https://docspring.com): fill PDF forms, generate PDFs and Word
+documents, and collect e-signatures from your flows.
 
 Version 1.0 calls DocSpring API v2. Upgrading from 0.1? See [Upgrading from 0.1](#upgrading-from-01).
 
@@ -88,7 +88,7 @@ The node's help (in the editor's Help sidebar) explains each input. A few that a
   and Find Submissions, `limit` is how many to return (default 50), and above 100 the node gets several pages for
   you. List Folders returns one page (`limit` 1 to 100).
 
-### Example — generate a PDF
+### Example: generate a PDF
 
 An **inject** node with this payload, wired into a **DocSpring** node (Operation:
 *Generate PDF*):
