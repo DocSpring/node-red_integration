@@ -330,7 +330,9 @@
 	<h3>Add Template Fields</h3>
 	<p>(<code>addTemplateFields</code>)</p>
 	<p><code>msg.payload = { template_id, fields: [ { name, type, page, x, y, width, height, … } ] }</code></p>
-	<p>The field settings are in the API reference (addTemplateFields).</p>
+	<p>The field settings are in the API reference (addTemplateFields). A field with the name of one of the template's
+		fields shares its settings (<code>type</code>, <code>required</code>, <code>default</code> and others): leave
+		them out or give the same values, and change them for every field with the name with Update Template Fields.</p>
 
 	<h3>Update Template Fields</h3>
 	<p>(<code>updateTemplateFields</code>)</p>
