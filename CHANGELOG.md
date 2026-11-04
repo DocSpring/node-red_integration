@@ -1,5 +1,25 @@
 # Changelog
 
+## 1.1.0
+
+Needs a DocSpring release that emails signers: older releases refuse `send_email`, so Create Signature Request, and
+Check Data with signers, would fail on them. Self-hosted (Enterprise) servers need that release too; until then, keep
+using 1.0.0.
+
+- **DocSpring emails the signers.** Create Signature Request sends `send_email` (true by default, as in the API):
+  DocSpring emails each signer a link to sign, with any reminders and the signed PDF once everyone has signed. It
+  takes the API's email options (`email_subject`, `email_message`, `cc`, `reminders`, `reply_to`,
+  `notification_emails`, `notify_when_signed`) and makes a signing link only for the signers DocSpring doesn't email.
+  To keep sending the links yourself, as in 1.0.0, set `send_email` to false (on the payload, or on a signer).
+- `signing_order` and each signer's `signing_step`.
+- **Check Data** takes the same settings with its signers.
+- The help for Generate PDF, batches and Generate Submission Files lists a Word template's `docx` and `odt` formats
+  (the nodes already passed them on), and `files.docx` and `files.odt`.
+- Text of only spaces counts as empty, as `''` does, and is left out: API v2 refuses blank text in some places (a
+  search query, a signer's email). A `password` is sent as given, spaces and all.
+- A signer's `email` and `reply_to` are trimmed, `cc` and `notification_emails` send each address once, and
+  `reminders` whose values are all empty are left out: the API refuses each of these otherwise.
+
 ## 1.0.0
 
 A major version: the nodes now call DocSpring API v2, and each operation's output is API v2's. Flows saved with

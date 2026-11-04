@@ -83,9 +83,16 @@ describe('DocSpring nodes', function () {
 	});
 
 	it('runs Create Signature Request, and treats the old createDataRequest as an unknown operation', async function () {
-		mock.respond(201, Object.assign({}, processed, { signature_requests: [{ id: 'srq_1', state: 'pending' }] }));
+		mock.respond(
+			201,
+			Object.assign({}, processed, { signature_requests: [{ id: 'srq_1', state: 'pending', send_email: false }] }),
+		);
 		mock.respond(201, { id: 'tok_1', signature_request_url: 'https://app.docspring.com/sign/srq_1' });
-		const payload = { template_id: 'tpl_1', signature_requests: [{ email: 'jane@example.com', fields: 'signature' }] };
+		const payload = {
+			template_id: 'tpl_1',
+			send_email: false,
+			signature_requests: [{ email: 'jane@example.com', fields: 'signature' }],
+		};
 		const msg = await runNode('createSignatureRequest', { payload });
 		mock.calls[0].body.signature_requests.should.eql([
 			{ email: 'jane@example.com', fields: ['signature'], auth_type: 'email_link' },
@@ -153,7 +160,10 @@ describe('DocSpring nodes', function () {
 	});
 
 	it("warns when a signing link can't be created, and still sends the submission on", async function () {
-		mock.respond(201, Object.assign({}, processed, { signature_requests: [{ id: 'srq_1', state: 'pending' }] }));
+		mock.respond(
+			201,
+			Object.assign({}, processed, { signature_requests: [{ id: 'srq_1', state: 'pending', send_email: false }] }),
+		);
 		mock.respond(409, { error: { code: 'conflict', message: 'Finished', details: [], request_id: 'req_2' } });
 		const warnings = [];
 		const msg = await new Promise((resolve, reject) => {
@@ -163,7 +173,11 @@ describe('DocSpring nodes', function () {
 				n1.on('call:error', (call) => reject(call.firstArg));
 				helper.getNode('n2').on('input', resolve);
 				n1.receive({
-					payload: { template_id: 'tpl_1', signature_requests: [{ email: 'jane@example.com', fields: ['signature'] }] },
+					payload: {
+						template_id: 'tpl_1',
+						send_email: false,
+						signature_requests: [{ email: 'jane@example.com', fields: ['signature'] }],
+					},
 				});
 			});
 		});

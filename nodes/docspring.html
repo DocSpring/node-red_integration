@@ -154,19 +154,23 @@
 
 	<h3>Generate PDF</h3>
 	<p>(<code>generatePdf</code>)</p>
-	<p><code>msg.payload = { template_id, data: { field: value, … }, version?, test?, metadata?, output_formats?: ["pdf", "png"], password?, expires_in?, field_overrides?, editable?, wait? }</code></p>
+	<p><code>msg.payload = { template_id, data: { field: value, … }, version?, test?, metadata?, output_formats?: ["pdf", "docx", "odt", "png"], password?, expires_in?, field_overrides?, editable?, wait? }</code></p>
 	<p>
 		Returns the submission. <code>files.pdf.download_url</code> is a link to the PDF, and
-		<code>files.pdf.permanent_url</code> one that doesn't expire. <code>expires_in</code> is in seconds;
-		<code>png</code> in <code>output_formats</code> adds an image of each page (<code>files.png</code>).
+		<code>files.pdf.permanent_url</code> one that doesn't expire. <code>expires_in</code> is in seconds.
+		<code>output_formats</code> lists what to make: <code>pdf</code>, and for a Word template its Word document
+		(<code>docx</code>, <code>files.docx</code>) or an OpenDocument file (<code>odt</code>,
+		<code>files.odt</code>), without the PDF unless you list it too. <code>png</code> adds an image of each page
+		of the PDF (<code>files.png</code>), with the PDF. Left out, the submission makes what the template makes. A
+		submission with a <code>password</code> can't make <code>docx</code> or <code>odt</code>.
 	</p>
 
 	<h3>Generate PDFs in a Batch</h3>
 	<p>(<code>createSubmissionBatch</code>)</p>
-	<p><code>msg.payload = { template_id?, template_version?, test?, metadata?, output_formats?, submissions: [ { data, metadata?, field_overrides?, template_id?, template_version?, test?, editable?, password?, expires_in?, output_formats? } ], wait? }</code></p>
+	<p><code>msg.payload = { template_id?, template_version?, test?, metadata?, output_formats?: ["pdf", "docx", "odt", "png"], submissions: [ { data, metadata?, field_overrides?, template_id?, template_version?, test?, editable?, password?, expires_in?, output_formats? } ], wait? }</code></p>
 	<p>
-		Up to 50 submissions. Each one uses the batch's <code>template_id</code> unless it names its own. Returns
-		the batch, with its submissions.
+		Up to 50 submissions. Each one uses the batch's <code>template_id</code> and <code>output_formats</code>
+		unless it sets its own; the formats are as in Generate PDF. Returns the batch, with its submissions.
 	</p>
 
 	<h3>Get Submission Batch</h3>
@@ -175,10 +179,10 @@
 
 	<h3>Check Data</h3>
 	<p>(<code>checkData</code>)</p>
-	<p><code>msg.payload = { template_id, data, version?, test?, signature_requests? }</code></p>
+	<p><code>msg.payload = { template_id, data, version?, test?, signature_requests?, send_email?, signing_order?, email_subject?, … }</code></p>
 	<p>
 		Checks the data against the template without creating anything. <code>signature_requests</code> are the
-		signers, as in Create Signature Request. Returns <code>{ valid, template_id, template_version, error?
+		signers, with the same email settings as Create Signature Request, so it checks what that will send. Returns <code>{ valid, template_id, template_version, error?
 		}</code>: when <code>valid</code> is false, <code>error</code> is what Generate PDF would return.
 	</p>
 
@@ -200,7 +204,11 @@
 	<h3>Generate Submission Files</h3>
 	<p>(<code>generateSubmissionFiles</code>)</p>
 	<p><code>msg.payload = { submission_id, formats?: ["png"], wait? }</code></p>
-	<p>Adds an image of each page to a processed submission. Returns the submission, with <code>files.png</code>.</p>
+	<p>
+		Adds files to a processed submission: <code>png</code> (the default) an image of each page of its PDF, and
+		for a Word template's submission <code>pdf</code>, <code>docx</code> (its Word document) or <code>odt</code>
+		(an OpenDocument file). Returns the submission, with the new files in <code>files</code>.
+	</p>
 
 	<h3>Expire Submission</h3>
 	<p>(<code>expireSubmission</code>)</p>
@@ -223,20 +231,38 @@
 
 	<h3>Create Signature Request</h3>
 	<p>(<code>createSignatureRequest</code>)</p>
-	<p><code>msg.payload = { template_id, data?, version?, test?, metadata?, expires_in?, signature_requests: [ { name?, email?, role?, fields: ["field", …], auth_type?, auth_provider?, prefilled_values_editable?, ignore_unknown_fields? } ], signing_link_type? }</code></p>
+	<p><code>msg.payload = { template_id, data?, version?, test?, metadata?, expires_in?, signature_requests: [ { name?, email?, role?, fields: ["field", …], auth_type?, auth_provider?, send_email?, signing_step?, prefilled_values_editable?, ignore_unknown_fields? } ], send_email?, signing_order?, email_subject?, email_message?, cc?, reminders?: { interval_days, max_count }, reply_to?, notification_emails?, notify_when_signed?, signing_link_type? }</code></p>
 	<p>
 		Each signer needs <code>fields</code>: the names of the fields they fill in (a list, or text separated by
-		commas). <code>email</code> is optional, for a signer who signs in your own page through an
-		<code>api</code> link. Every signer in the list is sent. A field can only be in one signature request.
+		commas). Every signer in the list is sent. A field can only be in one signature request.
 		<code>auth_type</code> is <code>email_link</code> (the default), <code>password</code>, <code>oauth</code>
 		(with <code>auth_provider</code>), <code>phone_number</code>, <code>ldap</code> or <code>saml</code>. A field
 		that <code>data</code> fills in needs <code>prefilled_values_editable</code>.
 	</p>
 	<p>
-		Returns the submission, waiting for its signature requests. Each signature request gets a
-		<code>signing_url</code>, and <code>first_signature_request_id</code> and <code>first_signing_url</code> are
-		the first one's. <code>signing_link_type</code>: <code>email</code> (the default, a link for 7 days),
-		<code>api</code> (24 hours) or <code>none</code>.
+		<code>send_email</code> is true by default: DocSpring emails each signer a link to sign, any reminders, and
+		the signed PDF once everyone has signed. Each signer then needs an <code>email</code> and the
+		<code>email_link</code> auth type. You can set <code>email_subject</code>, <code>email_message</code>,
+		<code>cc</code> (up to 10 people who get the signed PDF), <code>reminders</code> (every 1 to 30 days, up to
+		10 times), <code>reply_to</code>, <code>notification_emails</code> and <code>notify_when_signed</code>. A
+		test submission can only email members of your DocSpring team: other addresses are refused. Set <code>send_email</code> to false to send the
+		links yourself, or for people who sign in your own page through an <code>api</code> link (their
+		<code>email</code> is optional), and on a signer to send only theirs. DocSpring doesn't email the signers
+		of a form library template: set it to false for one.
+	</p>
+	<p>
+		<code>signing_order</code>: <code>parallel</code> (the default, everyone at once) or
+		<code>sequential</code>: people sign in the order of their <code>signing_step</code> (set it for every
+		signer or for none), or of the list. DocSpring emails each step when the one before it is done. When you
+		send the links, send each step's once the step before it has signed, and make a new one with Create Signing
+		Link if it has expired (<code>email</code> links last 7 days, <code>api</code> links 24 hours).
+	</p>
+	<p>
+		Returns the submission, waiting for its signature requests. Each signature request that DocSpring doesn't
+		email gets a <code>signing_url</code> (the others' is null: DocSpring's email has the link), and
+		<code>first_signature_request_id</code> and <code>first_signing_url</code> are the first one's.
+		<code>signing_link_type</code>: <code>email</code> (the default, a link for 7 days), <code>api</code>
+		(24 hours) or <code>none</code>.
 	</p>
 
 	<h3>Create Signing Link</h3>
@@ -304,7 +330,9 @@
 	<h3>Add Template Fields</h3>
 	<p>(<code>addTemplateFields</code>)</p>
 	<p><code>msg.payload = { template_id, fields: [ { name, type, page, x, y, width, height, … } ] }</code></p>
-	<p>The field settings are in the API reference (addTemplateFields).</p>
+	<p>The field settings are in the API reference (addTemplateFields). A field with the name of one of the template's
+		fields shares its settings (<code>type</code>, <code>required</code>, <code>default</code> and others): leave
+		them out or give the same values, and change them for every field with the name with Update Template Fields.</p>
 
 	<h3>Update Template Fields</h3>
 	<p>(<code>updateTemplateFields</code>)</p>

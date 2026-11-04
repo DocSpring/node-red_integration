@@ -62,7 +62,7 @@ payload sets `wait: false`):
 | Expire Submission | `expireSubmission` | `DELETE /submissions/{id}` |
 | Combine PDFs | `combinePdfs` | `POST /combined_pdfs` (sync) |
 | Get Combined PDF | `getCombinedPdf` | `GET /combined_pdfs/{id}` |
-| Create Signature Request | `createSignatureRequest` | `POST /templates/{template_id}/submissions` with `signature_requests` (standard host), then `POST /signature_requests/{id}/tokens` per signer |
+| Create Signature Request | `createSignatureRequest` | `POST /templates/{template_id}/submissions` with `signature_requests` (standard host), then `POST /signature_requests/{id}/tokens` per signer DocSpring doesn't email |
 | Create Signing Link | `createSigningLink` | `POST /signature_requests/{id}/tokens` (`type` in the body) |
 | Get Signature Request | `getSignatureRequest` | `GET /signature_requests/{id}` |
 | Find Templates | `findTemplates` | `GET /templates?query=&parent_folder_id=&limit=&cursor=` |
@@ -101,7 +101,12 @@ The payload of each operation is documented in the node's help (`nodes/docspring
   Template Fields and Get Template Page Images use the draft. Generate PDFs in a Batch sends it as the body's
   `template_version`.
 - Create Signature Request needs `fields` for every signer (v2 requires them), defaults `auth_type` to
-  `email_link`, and makes an `email` signing link per signer unless `signing_link_type` is `api` or `none`.
+  `email_link`, and always sends `send_email` (true by default, as in the API). It makes an `email` signing link
+  (unless `signing_link_type` is `api` or `none`) for each signature request whose response says DocSpring doesn't
+  email it (`send_email: false`), which covers a per-signer `send_email`: DocSpring's emails have their own links,
+  and a second one would let a flow send another email. The email options are sent as given, and the API refuses
+  the ones that don't fit (any of them when it emails nobody), so the node doesn't second-guess it. Check Data
+  sends the same settings, without the default `send_email`.
 - Every `signature_requests` row is sent as given, in Create Signature Request and Check Data, including rows
   without an email: v2 makes `email` optional, for signers who sign in the customer's own page through an `api`
   link.
