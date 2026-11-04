@@ -1,6 +1,6 @@
 # Changelog
 
-## 1.1.0 (unreleased)
+## 1.1.0
 
 Needs a DocSpring release that emails signers: older releases refuse `send_email`, so Create Signature Request, and
 Check Data with signers, would fail on them. Self-hosted (Enterprise) servers need that release too; until then, keep
