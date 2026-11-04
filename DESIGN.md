@@ -182,5 +182,7 @@ a core HTTP-In node and a webhook added in the DocSpring dashboard.
 - `test/editor_spec.js` keeps `nodes/docspring.html` in step with `lib/operations.js`: the dropdown, labels, help
   sections and the editor's handling of 0.1.x values.
 - Local: `npm link` into `~/.node-red`, run Node-RED, wire a flow against the DocSpring test account.
-- Publish `@docspring/node-red-docspring` to npm with the `node-red` keyword → it auto-lists in the Node-RED flow
-  library (flows.nodered.org).
+- Releasing: bump `version` in `package.json`, give the CHANGELOG's heading that version, merge, then push a signed
+  `v<version>` tag on `main`. `.github/workflows/publish.yml` checks the tag matches `package.json`, runs the tests
+  (`prepublishOnly`) and publishes to npm with provenance, through npm trusted publishing (no token). Don't publish
+  from a laptop. The `node-red` keyword lists the package in the Node-RED flow library (flows.nodered.org).
