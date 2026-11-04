@@ -30,7 +30,8 @@
     }
   },
   "scripts": {
-    "test": "mocha \"test/**/*_spec.js\""
+    "test": "mocha \"test/**/*_spec.js\"",
+    "prepublishOnly": "npm test"
   },
   "files": [
     "nodes",
