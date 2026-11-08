@@ -248,7 +248,7 @@ describe('DocSpring operations', function () {
 				},
 			});
 			const err = await run('generatePdf', { template_id: 'tpl_1', data: {} }).should.be.rejected();
-			err.message.should.containEql('/data/last_name: is required\nSubmission: sub_9\nRequest ID: req_1');
+			err.message.should.endWith("/data/last_name is required\nSubmission: sub_9\nRequest ID: req_1");
 		});
 	});
 

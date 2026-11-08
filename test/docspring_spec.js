@@ -152,7 +152,7 @@ describe('DocSpring nodes', function () {
 		});
 		caught.error.message.should.equal(
 			"Error: DocSpring API error 422 invalid_data: The data doesn't match the template's fields: /data/last_name is required\n" +
-				'/data/last_name: is required\nSubmission: sub_9\nRequest ID: req_1',
+				'Submission: sub_9\nRequest ID: req_1',
 		);
 		caught.error.code.should.equal('invalid_data');
 		caught.payload.should.eql({ template_id: 'tpl_1', data: {} });

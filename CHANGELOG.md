@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased
+
+- An error lists each problem once: the details the message already names no longer get a line of their own as well.
+- A batch's error names the submission each problem belongs to, as `(Submission: sub_...)` after its line.
+
 ## 1.1.0
 
 Needs a DocSpring release that emails signers: older releases refuse `send_email`, so Create Signature Request, and
