@@ -47,13 +47,18 @@ Folders, Other). Inputs come from `msg.payload` (the node's config has only the 
 `msg.operation` overrides the operation. The API's response is written to `msg.payload`. `node.status()` shows the
 operation while it runs, green "done", or red `HTTP <status> <code>` on an error.
 
+Name an operation that makes a submission for submissions, not PDFs: a Word template's submission makes a Word
+document or an OpenDocument file too. Keep its `msg.operation` value (`generatePdf`): saved flows store it. Operations
+that send submission data accept everything the API accepts (lists, nested objects, booleans and numbers as well as
+text): `msg.payload` is JSON, so pass it through as it is.
+
 Operations (`msg.operation` value → request; "sync" = the sync host with `?wait=true`, or `wait=false` when the
 payload sets `wait: false`):
 
 | Operation | Value | Request |
 |---|---|---|
-| Generate PDF | `generatePdf` | `POST /templates/{template_id}/submissions?version=` (sync) |
-| Generate PDFs in a Batch | `createSubmissionBatch` | `POST /submissions/batches` (sync) |
+| Create Submission | `generatePdf` | `POST /templates/{template_id}/submissions?version=` (sync) |
+| Create Submission Batch | `createSubmissionBatch` | `POST /submissions/batches` (sync) |
 | Get Submission Batch | `getSubmissionBatch` | `GET /submissions/batches/{id}?include_data=` |
 | Check Data | `checkData` | `POST /templates/{template_id}/submissions/validate?version=` |
 | Get Submission | `getSubmission` | `GET /submissions/{id}` |
@@ -98,7 +103,7 @@ The payload of each operation is documented in the node's help (`nodes/docspring
 - `test` is sent only when it's true: v2 rejects `test: false` from a test API token. Find Submissions is the
   exception, where `test: false` filters live submissions.
 - `version` is a query parameter. Making a PDF uses `latest` by default (the latest published version); List
-  Template Fields and Get Template Page Images use the draft. Generate PDFs in a Batch sends it as the body's
+  Template Fields and Get Template Page Images use the draft. Create Submission Batch sends it as the body's
   `template_version`.
 - Create Signature Request needs `fields` for every signer (v2 requires them), defaults `auth_type` to
   `email_link`, and always sends `send_email` (true by default, as in the API). It makes an `email` signing link

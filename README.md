@@ -38,8 +38,8 @@ response is written back to `msg.payload`. Errors go to a **Catch** node, with D
 
 | Operation | `msg.payload` in | out |
 |---|---|---|
-| **Generate PDF** (`generatePdf`) | `{ template_id, data: {…}, version?, test?, metadata?, output_formats?, password?, expires_in?, field_overrides?, editable?, wait? }` | the submission; `files.pdf.download_url` is the PDF, and a Word template's `docx` and `odt` output formats add `files.docx` and `files.odt` |
-| **Generate PDFs in a Batch** (`createSubmissionBatch`) | `{ template_id?, template_version?, test?, metadata?, output_formats?, submissions: [{ data, metadata?, field_overrides?, … }], wait? }` | the batch; `output_formats` as in Generate PDF, including a Word template's `docx` and `odt` |
+| **Create Submission** (`generatePdf`) | `{ template_id, data: {…}, version?, test?, metadata?, output_formats?, password?, expires_in?, field_overrides?, editable?, wait? }` | the submission; `files.pdf.download_url` is the PDF, and a Word template's `docx` and `odt` output formats add `files.docx` and `files.odt` |
+| **Create Submission Batch** (`createSubmissionBatch`) | `{ template_id?, template_version?, test?, metadata?, output_formats?, submissions: [{ data, metadata?, field_overrides?, … }], wait? }` | the batch; `output_formats` as in Create Submission, including a Word template's `docx` and `odt` |
 | **Get Submission Batch** (`getSubmissionBatch`) | `{ submission_batch_id, include_data? }` | the batch |
 | **Check Data** (`checkData`) | `{ template_id, data, version?, test?, signature_requests?, send_email?, signing_order?, email_subject?, … }` | `{ valid, error? }` |
 | **Get Submission** (`getSubmission`) | `{ submission_id }` | the submission |
@@ -88,10 +88,10 @@ The node's help (in the editor's Help sidebar) explains each input. A few that a
   and Find Submissions, `limit` is how many to return (default 50), and above 100 the node gets several pages for
   you. List Folders returns one page (`limit` 1 to 100).
 
-### Example: generate a PDF
+### Example: create a submission
 
 An **inject** node with this payload, wired into a **DocSpring** node (Operation:
-*Generate PDF*):
+*Create Submission*):
 
 ```json
 { "template_id": "tpl_xxxxxxxxxxxxxxxxxxxx",

@@ -168,7 +168,7 @@ describe('DocSpring operations', function () {
 		});
 	});
 
-	describe('Generate PDF', function () {
+	describe('Create Submission', function () {
 		it('posts to the sync host with version and wait in the query, and returns the submission', async function () {
 			mock.respond(201, submission());
 			const result = await run('generatePdf', {
@@ -232,7 +232,7 @@ describe('DocSpring operations', function () {
 			);
 			const err = await run('generatePdf', { template_id: 'tpl_1', data: {} }).should.be.rejected();
 			err.message.should.equal(
-				"The PDF couldn't be generated (state: image_download_failed): Couldn't download https://example.com/logo.png\nSubmission: sub_1",
+				"The submission couldn't be processed (state: image_download_failed): Couldn't download https://example.com/logo.png\nSubmission: sub_1",
 			);
 			err.code.should.equal('image_download_failed');
 		});
@@ -252,7 +252,7 @@ describe('DocSpring operations', function () {
 		});
 	});
 
-	describe('Generate PDFs in a Batch', function () {
+	describe('Create Submission Batch', function () {
 		const batch = (extra) =>
 			Object.assign(
 				{ id: 'sbb_1', state: 'processed', total_count: 2, error_count: 0, submissions: [submission(), submission({ id: 'sub_2' })] },
@@ -300,7 +300,7 @@ describe('DocSpring operations', function () {
 			const err = await run('createSubmissionBatch', { template_id: 'tpl_1', submissions: [{ data: {} }, { data: {} }] }).should.be
 				.rejected();
 			err.message.should.equal(
-				'Some PDFs in the batch failed (state: error): 1 of 2 failed\nSubmission sub_2 (syntax_error): Liquid error\nSubmission batch: sbb_1',
+				'Some submissions in the batch failed (state: error): 1 of 2 failed\nSubmission sub_2 (syntax_error): Liquid error\nSubmission batch: sbb_1',
 			);
 		});
 
