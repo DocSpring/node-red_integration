@@ -1,7 +1,11 @@
 # Changelog
 
-## Unreleased
+## 1.1.1
 
+- Generate PDF is now **Create Submission**, and Generate PDFs in a Batch is **Create Submission Batch**: a Word
+  template's submission makes a Word document or an OpenDocument file as well as a PDF. Flows that use them keep
+  working: only the names changed (`msg.operation` is still `generatePdf` and `createSubmissionBatch`). Their errors say
+  "The submission couldn't be processed" and "Some submissions in the batch failed".
 - An error lists each problem once: the details the message already names no longer get a line of their own as well.
 - A batch's error names the submission each problem belongs to, as `(Submission: sub_...)` after its line.
 
